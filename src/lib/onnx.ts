@@ -1,6 +1,6 @@
 "use client";
 import type { InferenceSession, Tensor as ORTTensor } from "onnxruntime-web";
-import { Tensor } from "onnxruntime-web"; // <-- value import (runtime constructor)
+import { Tensor } from "onnxruntime-web"; // runtime constructor
 
 // ------- image helpers -------
 export function loadImage(src: string) {
@@ -63,42 +63,66 @@ export function buildInputs(
   return { xNHWC, xNCHW };
 }
 
+/** Width/height from tensor dims, fallback to provided values if ambiguous. */
 export function getTensorWH(
   out: ORTTensor,
   fallbackW: number,
   fallbackH: number
 ) {
   const d = out.dims;
-  if (d.length === 4 && d[1] === 3) return { W: d[3], H: d[2] }; // NCHW
-  if (d.length === 4 && d[3] === 3) return { W: d[2], H: d[1] }; // NHWC
+
+  // 4D: [N,C,H,W] or [N,H,W,3]
+  if (d.length === 4) {
+    if (d[1] === 3) return { W: d[3], H: d[2] }; // NCHW
+    if (d[3] === 3) return { W: d[2], H: d[1] }; // NHWC
+  }
+
+  // 3D: [C,H,W] or [H,W,3]
+  if (d.length === 3) {
+    if (d[0] === 3) return { W: d[2], H: d[1] }; // CHW
+    if (d[2] === 3) return { W: d[1], H: d[0] }; // HWC
+  }
+
+  // Ambiguous or non-RGB
   return { W: fallbackW, H: fallbackH };
 }
 
-export function tensorToRgba(out: ORTTensor): Uint8ClampedArray {
+/** Convert output tensor (NCHW/NHWC/CHW/HWC; [0,1] or [-1,1]) to RGBA. */
+export function tensorToRgba(
+  out: ORTTensor,
+  fallbackW: number,
+  fallbackH: number
+): Uint8ClampedArray {
   const dims = out.dims;
   const data = out.data as Float32Array;
 
-  let W: number, H: number;
+  // Determine layout and W/H
+  const { W, H } = getTensorWH(out, fallbackW, fallbackH);
+
+  // Indexer for reading channels regardless of layout
   let get: (c: 0 | 1 | 2, p: number) => number;
 
   if (dims.length === 4 && dims[1] === 3) {
     // NCHW
-    H = dims[2];
-    W = dims[3];
     const plane = W * H;
     get = (c, p) => data[p + c * plane];
   } else if (dims.length === 4 && dims[3] === 3) {
     // NHWC
-    H = dims[1];
-    W = dims[2];
+    get = (c, p) => data[p * 3 + c];
+  } else if (dims.length === 3 && dims[0] === 3) {
+    // CHW
+    const plane = W * H;
+    get = (c, p) => data[p + c * plane];
+  } else if (dims.length === 3 && dims[2] === 3) {
+    // HWC
     get = (c, p) => data[p * 3 + c];
   } else {
-    H = (out as any).height ?? 0;
-    W = (out as any).width ?? 0;
+    // Fallback: assume NCHW with provided W/H
     const plane = W * H;
     get = (c, p) => data[p + c * plane];
   }
 
+  // Decide mapping [0,1] vs [-1,1] via simple variance heuristic
   const as01 = (v: number) => clamp255(v * 255);
   const asM11 = (v: number) => clamp255((v + 1) * 127.5);
   const map = pickMap(get, W, H, as01, asM11);
@@ -159,7 +183,8 @@ export async function runAutoLayout(
   };
 
   const t0 = performance.now();
-  let outputs: Record<string, ORTTensor>;
+
+  let outputs: Awaited<ReturnType<InferenceSession["run"]>>;
   let layoutUsed: "NHWC" | "NCHW" = "NHWC";
 
   try {
@@ -171,8 +196,10 @@ export async function runAutoLayout(
   const t1 = performance.now();
 
   const outName = session.outputNames[0];
-  const out = outputs[outName];
-  const rgbaOut = tensorToRgba(out);
+  const out = outputs[outName] as ORTTensor;
+
+  // pass original input size as explicit fallback (no any-casts)
+  const rgbaOut = tensorToRgba(out, width, height);
   const { W, H } = getTensorWH(out, width, height);
 
   return { rgbaOut, W, H, layoutUsed, ms: t1 - t0 };
