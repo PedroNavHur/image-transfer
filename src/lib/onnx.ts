@@ -4,7 +4,7 @@ import { Tensor } from "onnxruntime-web"; // <-- value import (runtime construct
 
 // ------- image helpers -------
 export function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve) => {
+  return new Promise<HTMLImageElement>(resolve => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.src = src;
@@ -63,7 +63,11 @@ export function buildInputs(
   return { xNHWC, xNCHW };
 }
 
-export function getTensorWH(out: ORTTensor, fallbackW: number, fallbackH: number) {
+export function getTensorWH(
+  out: ORTTensor,
+  fallbackW: number,
+  fallbackH: number
+) {
   const d = out.dims;
   if (d.length === 4 && d[1] === 3) return { W: d[3], H: d[2] }; // NCHW
   if (d.length === 4 && d[3] === 3) return { W: d[2], H: d[1] }; // NHWC
@@ -79,12 +83,14 @@ export function tensorToRgba(out: ORTTensor): Uint8ClampedArray {
 
   if (dims.length === 4 && dims[1] === 3) {
     // NCHW
-    H = dims[2]; W = dims[3];
+    H = dims[2];
+    W = dims[3];
     const plane = W * H;
     get = (c, p) => data[p + c * plane];
   } else if (dims.length === 4 && dims[3] === 3) {
     // NHWC
-    H = dims[1]; W = dims[2];
+    H = dims[1];
+    W = dims[2];
     get = (c, p) => data[p * 3 + c];
   } else {
     H = (out as any).height ?? 0;
@@ -99,7 +105,7 @@ export function tensorToRgba(out: ORTTensor): Uint8ClampedArray {
 
   const rgba = new Uint8ClampedArray(W * H * 4);
   for (let p = 0; p < W * H; p++) {
-    rgba[4 * p]     = map(get(0, p));
+    rgba[4 * p] = map(get(0, p));
     rgba[4 * p + 1] = map(get(1, p));
     rgba[4 * p + 2] = map(get(2, p));
     rgba[4 * p + 3] = 255;
@@ -116,17 +122,23 @@ function pickMap(
 ) {
   const plane = W * H;
   const variance = (map: (v: number) => number) => {
-    let s = 0, s2 = 0, n = 0;
+    let s = 0,
+      s2 = 0,
+      n = 0;
     for (let p = 0; p < Math.min(plane, 500); p += 5) {
       const m = (map(get(0, p)) + map(get(1, p)) + map(get(2, p))) / 3;
-      s += m; s2 += m * m; n++;
+      s += m;
+      s2 += m * m;
+      n++;
     }
     const mean = s / n;
     return s2 / n - mean * mean;
   };
   return variance(b) > variance(a) ? b : a;
 }
-function clamp255(v: number) { return Math.max(0, Math.min(255, v)); }
+function clamp255(v: number) {
+  return Math.max(0, Math.min(255, v));
+}
 
 // ------- core runner (auto NHWC→NCHW) -------
 export async function runAutoLayout(
@@ -139,8 +151,12 @@ export async function runAutoLayout(
 ) {
   const { xNHWC, xNCHW } = buildInputs(rgba, width, height, range);
 
-  const feedsNHWC = { [inputName]: new Tensor("float32", xNHWC, [1, height, width, 3]) };
-  const feedsNCHW = { [inputName]: new Tensor("float32", xNCHW, [1, 3, height, width]) };
+  const feedsNHWC = {
+    [inputName]: new Tensor("float32", xNHWC, [1, height, width, 3]),
+  };
+  const feedsNCHW = {
+    [inputName]: new Tensor("float32", xNCHW, [1, 3, height, width]),
+  };
 
   const t0 = performance.now();
   let outputs: Record<string, ORTTensor>;

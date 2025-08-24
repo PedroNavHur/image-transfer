@@ -14,9 +14,11 @@ export function initOrt() {
   initialized = true;
 }
 
-export async function createSession(model: string | Uint8Array) {
+export type ModelSource = ArrayBufferLike;
+
+export async function createSession(model: ModelSource) {
   initOrt();
-  return await ort.InferenceSession.create(model, {
+  return ort.InferenceSession.create(model, {
     executionProviders: ["wasm"],
     graphOptimizationLevel: "all",
   });
