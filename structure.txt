@@ -1,0 +1,37 @@
+.
+├── README.md
+├── eslint.config.mjs
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── models
+│   │   └── agan_ghibli.onnx
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── rust-core
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   └── src
+│       └── lib.rs
+├── src
+│   ├── app
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── onnx-tester
+│   │   │   └── page.tsx
+│   │   └── page.tsx
+│   └── workers
+│       ├── onnx-smoke.ts
+│       └── style-worker.ts
+├── structure.txt
+└── tsconfig.json
+
+9 directories, 26 files

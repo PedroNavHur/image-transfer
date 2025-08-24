@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Rust (any crate/workspace)
+**/target/
+
+# rustfmt/clippy backup files
+**/*.rs.bk
+
+# If a crate is a *library* (not a binary app), you can ignore its lockfile:
+# **/Cargo.lock
