@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@tailwind utilities;
 @plugin "daisyui" {
   themes:
     sunset --default,

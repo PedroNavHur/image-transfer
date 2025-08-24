@@ -23,8 +23,8 @@ type StylizerState = {
   dlUrl: string | null;
   run: () => Promise<void>;
 
-  outCanvasRef: React.RefObject<HTMLCanvasElement>;
-  scratchRef: React.RefObject<HTMLCanvasElement>;
+  outCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+  scratchRef: React.RefObject<HTMLCanvasElement | null>;
 };
 
 export function useOnnxStylizer(
@@ -33,19 +33,20 @@ export function useOnnxStylizer(
   const [modelKey, setModelKey] = useState<PresetKey>(
     initial.modelKey ?? "ghibli"
   );
-  const [status, setStatus] = useState("Pick a style and an image.");
+  const [status, setStatus] = useState<string>("Pick a style and an image.");
   const [range, setRange] = useState<RangeMode>(initial.range ?? "0to1");
-  const [ready, setReady] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [ready, setReady] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastMs, setLastMs] = useState<number | null>(null);
 
-  const [imgUrl, setImgUrl] = useState("");
+  const [imgUrl, setImgUrl] = useState<string>("");
   const imgUrlPrev = useRef<string | null>(null);
 
   const [dlUrl, setDlUrl] = useState<string | null>(null);
 
-  const outCanvasRef = useRef<HTMLCanvasElement>(null);
-  const scratchRef = useRef<HTMLCanvasElement>(null);
+  // NOTE: include `| null` in the RefObject type to match React's runtime shape
+  const outCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scratchRef = useRef<HTMLCanvasElement | null>(null);
 
   const sessionRef = useRef<Awaited<ReturnType<typeof createSession>> | null>(
     null
@@ -53,14 +54,13 @@ export function useOnnxStylizer(
   const inputNameRef = useRef<string>("");
 
   // Revoke blob URL when replaced/unmounted
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       if (dlUrl) URL.revokeObjectURL(dlUrl);
-    },
-    [dlUrl]
-  );
+    };
+  }, [dlUrl]);
 
-  // Revoke previous image object URL when replaced
+  // Revoke previous image object URL when replaced/unmounted
   useEffect(() => {
     return () => {
       if (imgUrlPrev.current) URL.revokeObjectURL(imgUrlPrev.current);
@@ -71,19 +71,21 @@ export function useOnnxStylizer(
   useEffect(() => {
     const preset = PRESETS[modelKey];
     let canceled = false;
+
     (async () => {
       try {
         setReady(false);
         setStatus(`Loading ${preset.label}…`);
         const s = await createSession(preset.file);
         if (canceled) return;
+
         sessionRef.current = s;
-        inputNameRef.current = s.inputNames[0];
+        inputNameRef.current = s.inputNames[0] ?? "";
         setReady(true);
         setStatus(`Ready: ${preset.label}`);
-      } catch (e: any) {
+      } catch (e: unknown) {
         sessionRef.current = null;
-        setStatus(`Model load failed: ${e?.message ?? String(e)}`);
+        setStatus(`Model load failed: ${getErrorMessage(e)}`);
       } finally {
         setLastMs(null);
         if (dlUrl) {
@@ -92,10 +94,11 @@ export function useOnnxStylizer(
         }
       }
     })();
+
     return () => {
       canceled = true;
     };
-  }, [modelKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modelKey]); // PRESETS is a module constant
 
   const pickImage = useCallback(
     (f: File) => {
@@ -114,19 +117,21 @@ export function useOnnxStylizer(
 
   const run = useCallback(async () => {
     if (!ready || !imgUrl || !sessionRef.current || isRunning) return;
+
     try {
       setIsRunning(true);
       setStatus("Preparing image…");
 
       const img = await loadImage(imgUrl);
-      const { width, height, rgba } = rasterize(
-        img,
-        scratchRef.current!,
-        RESIZE_MAX
-      );
+      const scratch = scratchRef.current;
+      if (!scratch) {
+        setStatus("Error: scratch canvas not available");
+        return;
+      }
+      const { width, height, rgba } = rasterize(img, scratch, RESIZE_MAX);
 
       setStatus("Stylizing…");
-      const { rgbaOut, W, H, layoutUsed, ms } = await runAutoLayout(
+      const result = await runAutoLayout(
         sessionRef.current,
         inputNameRef.current,
         rgba,
@@ -135,10 +140,26 @@ export function useOnnxStylizer(
         range
       );
 
-      const c = outCanvasRef.current!;
+      const { rgbaOut, W, H, layoutUsed, ms } = result;
+
+      const c = outCanvasRef.current;
+      if (!c) {
+        setStatus("Error: output canvas not available");
+        return;
+      }
+      const ctx = c.getContext("2d");
+      if (!ctx) {
+        setStatus("Error: 2D context not available");
+        return;
+      }
+
       c.width = W;
       c.height = H;
-      c.getContext("2d")!.putImageData(new ImageData(rgbaOut, W, H), 0, 0);
+
+      // Create a correctly-typed ImageData and copy pixels
+      const imgData = ctx.createImageData(W, H);
+      imgData.data.set(rgbaOut as unknown as Uint8ClampedArray);
+      ctx.putImageData(imgData, 0, 0);
 
       const url = await canvasToBlobURL(c);
       if (dlUrl) URL.revokeObjectURL(dlUrl);
@@ -146,8 +167,8 @@ export function useOnnxStylizer(
 
       setLastMs(ms);
       setStatus(`Done in ${ms.toFixed(1)} ms (${layoutUsed})`);
-    } catch (e: any) {
-      setStatus(`Error: ${e?.message ?? String(e)}`);
+    } catch (e: unknown) {
+      setStatus(`Error: ${getErrorMessage(e)}`);
     } finally {
       setIsRunning(false);
     }
@@ -171,7 +192,20 @@ export function useOnnxStylizer(
   };
 }
 
-async function canvasToBlobURL(c: HTMLCanvasElement, type = "image/png") {
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
+async function canvasToBlobURL(
+  c: HTMLCanvasElement,
+  type: string = "image/png"
+): Promise<string> {
   const blob = await new Promise<Blob>((resolve, reject) => {
     c.toBlob(
       b => (b ? resolve(b) : reject(new Error("toBlob returned null"))),
