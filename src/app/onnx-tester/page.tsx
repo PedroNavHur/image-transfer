@@ -1,144 +1,156 @@
 "use client";
 
 import OnnxControls from "@/components/OnnXControls";
-import { RangeMode, loadImage, rasterize, runAutoLayout } from "@/lib/onnx";
-import { createSession } from "@/lib/ort";
-import { useEffect, useRef, useState } from "react";
+import { PRESETS, PresetKey } from "@/constants/presets";
+import { useOnnxStylizer } from "@/hooks/useStylizer";
 
 export default function OnnxTesterPage() {
-  const [modelUrl, setModelUrl] = useState("/models/animeganv3_arcane.onnx");
-  const [imgUrl, setImgUrl] = useState("");
-  const [range, setRange] = useState<RangeMode>("0to1");
-  const [resizeMax, setResizeMax] = useState(512);
-
-  const [status, setStatus] = useState("Pick a model and an image.");
-  const [ready, setReady] = useState(false);
-  const [lastMs, setLastMs] = useState<number | null>(null);
-
-  const outCanvasRef = useRef<HTMLCanvasElement>(null);
-  const scratchRef = useRef<HTMLCanvasElement | null>(null);
-
-  const sessionRef = useRef<Awaited<ReturnType<typeof createSession>> | null>(
-    null
-  );
-  const inputNameRef = useRef<string>("");
-
-  // Load model on URL change
-  useEffect(() => {
-    let canceled = false;
-    (async () => {
-      try {
-        setReady(false);
-        setStatus("Loading model…");
-        const s = await createSession(modelUrl);
-        if (canceled) return;
-        sessionRef.current = s;
-        inputNameRef.current = s.inputNames[0];
-        setReady(true);
-        setStatus(`Model ready: ${s.inputNames[0]} → ${s.outputNames[0]}`);
-      } catch (e: any) {
-        sessionRef.current = null;
-        setStatus(`Model load failed: ${e?.message ?? String(e)}`);
-      }
-    })();
-    return () => {
-      canceled = true;
-    };
-  }, [modelUrl]);
-
-  // Handlers from controls
-  const onPickModel = (f: File) => setModelUrl(URL.createObjectURL(f));
-  const onPickImage = (f: File) => setImgUrl(URL.createObjectURL(f));
-
-  const onRun = async () => {
-    if (!ready || !imgUrl || !sessionRef.current) return;
-    try {
-      setStatus("Preparing image…");
-      const img = await loadImage(imgUrl);
-      const { width, height, rgba } = rasterize(
-        img,
-        scratchRef.current!,
-        resizeMax
-      );
-
-      setStatus("Running…");
-      const { rgbaOut, W, H, layoutUsed, ms } = await runAutoLayout(
-        sessionRef.current,
-        inputNameRef.current,
-        rgba,
-        width,
-        height,
-        range
-      );
-
-      const c = outCanvasRef.current!;
-      c.width = W;
-      c.height = H;
-      c.getContext("2d")!.putImageData(new ImageData(rgbaOut, W, H), 0, 0);
-
-      setLastMs(ms);
-      setStatus(`Done in ${ms.toFixed(1)} ms (layout ${layoutUsed})`);
-    } catch (e: any) {
-      setStatus(`Error: ${e?.message ?? String(e)}`);
-    }
-  };
+  const {
+    modelKey,
+    setModelKey,
+    imgUrl,
+    pickImage,
+    range,
+    setRange,
+    status,
+    ready,
+    isRunning,
+    lastMs,
+    dlUrl,
+    run,
+    outCanvasRef,
+    scratchRef,
+  } = useOnnxStylizer({ modelKey: "ghibli", range: "0to1" });
 
   return (
-    <main className="min-h-dvh bg-neutral-900 text-neutral-100">
-      <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
-        <h1 className="text-2xl font-semibold">
-          AnimeGANv3 (ONNX) — Next.js + Tailwind
-        </h1>
+    <main className="min-h-dvh bg-base-200 relative overflow-hidden">
+      {/* soft glow */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-secondary/20 blur-3xl" />
+      </div>
 
-        <OnnxControls
-          ready={ready}
-          status={status}
-          resizeMax={resizeMax}
-          range={range}
-          onPickModel={onPickModel}
-          onPickImage={onPickImage}
-          onChangeResize={setResizeMax}
-          onChangeRange={setRange}
-          onRun={onRun}
-          runDisabled={!ready || !imgUrl}
-        />
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
-            <h3 className="mb-2 text-sm font-medium text-neutral-200">
-              Original
-            </h3>
-            {imgUrl ? (
-              <img
-                src={imgUrl}
-                alt=""
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-900"
-              />
-            ) : (
-              <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-neutral-800 text-neutral-500">
-                No image selected
-              </div>
-            )}
+      <div className="mx-auto w-full max-w-7xl p-6 space-y-6">
+        {/* Navbar */}
+        <div className="navbar rounded-box bg-base-100/80 shadow backdrop-blur">
+          <div className="flex-1">
+            <span className="btn btn-ghost text-xl">StyleForge</span>
           </div>
-
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
-            <h3 className="mb-2 text-sm font-medium text-neutral-200">
-              Output
-            </h3>
-            <canvas
-              ref={outCanvasRef}
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-900"
-            />
-            {lastMs !== null && (
-              <div className="mt-2 text-xs text-neutral-400">
-                Inference time: {lastMs.toFixed(1)} ms
-              </div>
+          <div className="flex-none items-center gap-2">
+            {isRunning && (
+              <span className="loading loading-spinner loading-sm text-primary" />
             )}
+            <span className={`badge ${ready ? "badge-success" : "badge-info"}`}>
+              {ready ? "Ready" : "Loading"}
+            </span>
           </div>
         </div>
 
-        {/* Hidden scratch canvas for rasterization */}
-        <canvas ref={c => (scratchRef.current = c)} className="hidden" />
+        {/* Layout: left controls, right gallery */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* LEFT: controls */}
+          <aside className="lg:col-span-4">
+            <OnnxControls
+              ready={ready}
+              status={status}
+              range={range}
+              modelKey={modelKey}
+              presets={Object.entries(PRESETS).map(([key, v]) => ({
+                key: key as PresetKey,
+                label: v.label,
+                hint: v.hint,
+              }))}
+              onChangeModel={k => setModelKey(k as PresetKey)}
+              onPickImage={pickImage}
+              onChangeRange={setRange}
+              onRun={run}
+              runDisabled={!ready || !imgUrl || isRunning}
+              isRunning={isRunning}
+            />
+          </aside>
+
+          {/* RIGHT: before / after */}
+          <section className="lg:col-span-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* BEFORE */}
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body gap-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="card-title text-base">Before</h3>
+                  </div>
+                  <div className="rounded-box border border-base-300 bg-base-200 p-2">
+                    {imgUrl ? (
+                      <img
+                        src={imgUrl}
+                        alt="Original"
+                        className="mx-auto max-h-[60vh] w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="grid h-[40vh] place-items-center text-base-content/60 text-sm">
+                        Upload an image to preview
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* AFTER */}
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body gap-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="card-title text-base">After</h3>
+                    <div className="flex items-center gap-2">
+                      {lastMs !== null && (
+                        <div className="badge badge-ghost">
+                          {lastMs.toFixed(1)} ms
+                        </div>
+                      )}
+                      <a
+                        href={dlUrl ?? "#"}
+                        download={`stylized_${modelKey}.png`}
+                        aria-disabled={!dlUrl}
+                        className={`btn btn-sm btn-secondary ${dlUrl ? "" : "btn-disabled"}`}
+                      >
+                        Download PNG
+                      </a>
+                    </div>
+                  </div>
+                  <div className="rounded-box border border-base-300 bg-base-200 p-2">
+                    {dlUrl ? (
+                      <img
+                        src={dlUrl}
+                        alt="Stylized"
+                        className="mx-auto max-h-[60vh] w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="grid h-[40vh] place-items-center text-base-content/60 text-sm">
+                        Run to see result
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* status */}
+            <div className="mt-6 alert bg-base-100 border border-base-300">
+              {isRunning ? (
+                <span className="flex items-center gap-2 text-sm">
+                  <span className="loading loading-spinner loading-xs" />
+                  {status}
+                </span>
+              ) : (
+                <span className="text-sm">{status}</span>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Hidden canvases */}
+        <canvas ref={scratchRef} className="hidden" />
+        <canvas ref={outCanvasRef} className="hidden" />
       </div>
     </main>
   );
