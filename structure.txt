@@ -11,10 +11,25 @@
 │   ├── file.svg
 │   ├── globe.svg
 │   ├── models
-│   │   └── agan_ghibli.onnx
+│   │   ├── agan_ghibli.onnx
+│   │   ├── agan_hayao.onnx
+│   │   ├── agan_shinkai.onnx
+│   │   ├── agan_sketch.onnx
+│   │   ├── fns_candy.onnx
+│   │   ├── fns_mosaic.onnx
+│   │   ├── fns_pointilism.onnx
+│   │   ├── fns_udnie.onnx
+│   │   ├── mosaic-2.onnx
+│   │   └── out.fixed.onnx
 │   ├── next.svg
 │   ├── vercel.svg
 │   └── window.svg
+├── python
+│   ├── clean_up.py
+│   ├── in.onnx
+│   ├── inspect_models.py
+│   ├── output.txt
+│   └── structure.txt
 ├── rust-core
 │   ├── Cargo.lock
 │   ├── Cargo.toml
@@ -25,13 +40,18 @@
 │   │   ├── favicon.ico
 │   │   ├── globals.css
 │   │   ├── layout.tsx
-│   │   ├── onnx-tester
-│   │   │   └── page.tsx
 │   │   └── page.tsx
+│   ├── components
+│   │   └── OnnXControls.tsx
+│   ├── constants
+│   │   └── presets.ts
+│   ├── hooks
+│   │   └── useStylizer.ts
+│   ├── lib
+│   │   ├── onnx.ts
+│   │   └── ort.ts
 │   └── workers
-│       ├── onnx-smoke.ts
-│       └── style-worker.ts
 ├── structure.txt
 └── tsconfig.json
 
-9 directories, 26 files
+13 directories, 42 files

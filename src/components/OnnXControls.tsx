@@ -1,21 +1,22 @@
 "use client";
 
-import { RangeMode } from "@/lib/onnx";
+import type { PresetKey } from "@/constants/presets";
 import { useCallback, useRef, useState } from "react";
 
-type Preset = { key: string; label: string; hint?: string };
+type Group = {
+  title: string;
+  items: { key: PresetKey; label: string; hint?: string }[];
+};
 
 type Props = {
   ready: boolean;
   status: string;
-  range: RangeMode;
 
-  modelKey: string;
-  presets: Preset[];
-  onChangeModel: (key: string) => void;
+  modelKey: PresetKey;
+  groups: Group[];
+  onChangeModel: (key: PresetKey) => void;
 
   onPickImage: (f: File) => void;
-  onChangeRange: (r: RangeMode) => void;
   onRun: () => void;
   runDisabled: boolean;
   isRunning?: boolean;
@@ -24,12 +25,10 @@ type Props = {
 export default function OnnxControls({
   ready,
   status,
-  range,
   modelKey,
-  presets,
+  groups,
   onChangeModel,
   onPickImage,
-  onChangeRange,
   onRun,
   runDisabled,
   isRunning = false,
@@ -48,30 +47,38 @@ export default function OnnxControls({
     [onPickImage],
   );
 
+  const currentHint = groups
+    .flatMap((g) => g.items)
+    .find((i) => i.key === modelKey)?.hint;
+
   return (
     <div className="card bg-base-100 shadow-xl">
       <div className="card-body gap-4">
         <h2 className="card-title">Choose style & image</h2>
 
-        {/* preset pills */}
-        <div className="flex flex-wrap gap-2">
-          {presets.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => onChangeModel(p.key)}
-              className={`btn btn-sm ${
-                modelKey === p.key ? "btn-primary" : "btn-outline"
-              }`}
-            >
-              {p.label}
-            </button>
+        {/* grouped preset pills */}
+        <div className="space-y-3">
+          {groups.map((group) => (
+            <div key={group.title}>
+              <div className="text-base-content/60 mb-2 text-xs font-semibold uppercase">
+                {group.title}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {group.items.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => onChangeModel(p.key)}
+                    className={`btn btn-sm ${modelKey === p.key ? "btn-primary" : "btn-outline"}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
-        {presets.find((p) => p.key === modelKey)?.hint && (
-          <div className="text-xs opacity-70">
-            {presets.find((p) => p.key === modelKey)?.hint}
-          </div>
-        )}
+
+        {currentHint && <div className="text-xs opacity-70">{currentHint}</div>}
 
         {/* image dropzone */}
         <div
@@ -113,31 +120,10 @@ export default function OnnxControls({
               }
             />
             <div className="text-base-content/60 text-xs">
-              Your image stays in the browser • Auto-resized to 512px max side
+              Your image stays in the browser • Auto-resized (AnimeGAN: 512 max,
+              FNS: 224×224)
             </div>
           </div>
-        </div>
-
-        {/* knobs (only input range now) */}
-        <div className="grid grid-cols-1">
-          <label className="form-control w-full">
-            <div className="label">
-              <span className="label-text">Input range</span>
-            </div>
-            <select
-              value={range}
-              onChange={(e) => onChangeRange(e.target.value as RangeMode)}
-              className="select select-bordered"
-            >
-              <option value="0to1">[0,1]</option>
-              <option value="m1to1">[-1,1]</option>
-            </select>
-            <div className="label">
-              <span className="label-text-alt opacity-70">
-                Flip if colors look off
-              </span>
-            </div>
-          </label>
         </div>
 
         {/* action */}
@@ -152,8 +138,7 @@ export default function OnnxControls({
           >
             {isRunning ? (
               <>
-                <span className="loading loading-spinner" />
-                Stylizing…
+                <span className="loading loading-spinner" /> Stylizing…
               </>
             ) : (
               "Stylize"

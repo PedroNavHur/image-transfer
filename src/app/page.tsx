@@ -1,8 +1,17 @@
 "use client";
 
 import OnnxControls from "@/components/OnnXControls";
-import { PRESETS, PresetKey } from "@/constants/presets";
+import { PRESETS, PRESET_GROUPS } from "@/constants/presets";
 import { useOnnxStylizer } from "@/hooks/useStylizer";
+
+const groups = PRESET_GROUPS.map((g) => ({
+  title: g.title,
+  items: g.keys.map((k) => ({
+    key: k,
+    label: PRESETS[k].label,
+    hint: PRESETS[k].hint,
+  })),
+}));
 
 export default function OnnxTesterPage() {
   const {
@@ -10,8 +19,6 @@ export default function OnnxTesterPage() {
     setModelKey,
     imgUrl,
     pickImage,
-    range,
-    setRange,
     status,
     ready,
     isRunning,
@@ -20,7 +27,7 @@ export default function OnnxTesterPage() {
     run,
     outCanvasRef,
     scratchRef,
-  } = useOnnxStylizer({ modelKey: "ghibli", range: "0to1" });
+  } = useOnnxStylizer({ modelKey: "ghibli" });
 
   return (
     <main className="bg-base-200 relative min-h-dvh overflow-hidden">
@@ -53,16 +60,10 @@ export default function OnnxTesterPage() {
             <OnnxControls
               ready={ready}
               status={status}
-              range={range}
               modelKey={modelKey}
-              presets={Object.entries(PRESETS).map(([key, v]) => ({
-                key: key as PresetKey,
-                label: v.label,
-                hint: v.hint,
-              }))}
-              onChangeModel={(k) => setModelKey(k as PresetKey)}
+              groups={groups}
+              onChangeModel={(k) => setModelKey(k)}
               onPickImage={pickImage}
-              onChangeRange={setRange}
               onRun={run}
               runDisabled={!ready || !imgUrl || isRunning}
               isRunning={isRunning}

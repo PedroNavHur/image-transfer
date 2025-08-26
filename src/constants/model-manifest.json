@@ -1,0 +1,74 @@
+{
+  "agan_hayao.onnx": {
+    "input": "AnimeGANv3_input:0",
+    "layout": "NHWC",
+    "H": null,
+    "W": null,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "agan_ghibli.onnx": {
+    "input": "AnimeGANv3_input:0",
+    "layout": "NHWC",
+    "H": null,
+    "W": null,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "fns_pointilism.onnx": {
+    "input": "input1",
+    "layout": "NCHW",
+    "H": 224,
+    "W": 224,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "fns_mosaic.onnx": {
+    "input": "input1",
+    "layout": "NCHW",
+    "H": 224,
+    "W": 224,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "fns_udnie.onnx": {
+    "input": "input1",
+    "layout": "NCHW",
+    "H": 224,
+    "W": 224,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "fns_candy.onnx": {
+    "input": "input1",
+    "layout": "NCHW",
+    "H": 224,
+    "W": 224,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  },
+  "agan_sketch.onnx": {
+    "input": "AnimeGANv3_input:0",
+    "layout": "NHWC",
+    "H": null,
+    "W": null,
+    "dtype": "1",
+    "ir_version": 7,
+    "opset": 13
+  },
+  "agan_shinkai.onnx": {
+    "input": "AnimeGANv3_input:0",
+    "layout": "NHWC",
+    "H": null,
+    "W": null,
+    "dtype": "1",
+    "ir_version": 4,
+    "opset": 9
+  }
+}
