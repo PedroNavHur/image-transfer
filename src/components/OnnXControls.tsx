@@ -98,7 +98,7 @@ export default function OnnxControls({
             </div>
             <div className="divider my-1">or</div>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm rounded-lg"
               onClick={() => fileRef.current?.click()}
             >
               Browse…
@@ -148,7 +148,7 @@ export default function OnnxControls({
           <button
             onClick={onRun}
             disabled={runDisabled}
-            className="btn btn-primary"
+            className="btn btn-primary rounded-lg"
           >
             {isRunning ? (
               <>

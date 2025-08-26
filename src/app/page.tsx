@@ -1,103 +1,158 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import OnnxControls from "@/components/OnnXControls";
+import { PRESETS, PresetKey } from "@/constants/presets";
+import { useOnnxStylizer } from "@/hooks/useStylizer";
+
+export default function OnnxTesterPage() {
+  const {
+    modelKey,
+    setModelKey,
+    imgUrl,
+    pickImage,
+    range,
+    setRange,
+    status,
+    ready,
+    isRunning,
+    lastMs,
+    dlUrl,
+    run,
+    outCanvasRef,
+    scratchRef,
+  } = useOnnxStylizer({ modelKey: "ghibli", range: "0to1" });
+
   return (
-    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center gap-16 p-8 pb-20 font-sans sm:p-20">
-      <main className="row-start-2 flex flex-col items-center gap-[32px] sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-center font-mono text-sm/6 sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="rounded bg-black/[.05] px-1 py-0.5 font-mono font-semibold dark:bg-white/[.06]">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="bg-base-200 relative min-h-dvh overflow-hidden">
+      {/* soft glow */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="bg-primary/20 absolute -top-32 -left-32 h-80 w-80 rounded-full blur-3xl" />
+        <div className="bg-secondary/20 absolute -right-24 -bottom-40 h-96 w-96 rounded-full blur-3xl" />
+      </div>
 
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <a
-            className="bg-foreground text-background flex h-10 items-center justify-center gap-2 rounded-full border border-solid border-transparent px-4 text-sm font-medium transition-colors hover:bg-[#383838] sm:h-12 sm:w-auto sm:px-5 sm:text-base dark:hover:bg-[#ccc]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="flex h-10 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-4 text-sm font-medium transition-colors hover:border-transparent hover:bg-[#f2f2f2] sm:h-12 sm:w-auto sm:px-5 sm:text-base md:w-[158px] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
+        {/* Navbar */}
+        <div className="navbar rounded-box bg-base-100/80 shadow backdrop-blur">
+          <div className="flex-1">
+            <span className="btn btn-ghost text-xl">StyleForge</span>
+          </div>
+          <div className="flex-none items-center gap-2">
+            {isRunning && (
+              <span className="loading loading-spinner loading-sm text-primary" />
+            )}
+            <span className={`badge ${ready ? "badge-success" : "badge-info"}`}>
+              {ready ? "Ready" : "Loading"}
+            </span>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex flex-wrap items-center justify-center gap-[24px]">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Layout: left controls, right gallery */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* LEFT: controls */}
+          <aside className="lg:col-span-4">
+            <OnnxControls
+              ready={ready}
+              status={status}
+              range={range}
+              modelKey={modelKey}
+              presets={Object.entries(PRESETS).map(([key, v]) => ({
+                key: key as PresetKey,
+                label: v.label,
+                hint: v.hint,
+              }))}
+              onChangeModel={(k) => setModelKey(k as PresetKey)}
+              onPickImage={pickImage}
+              onChangeRange={setRange}
+              onRun={run}
+              runDisabled={!ready || !imgUrl || isRunning}
+              isRunning={isRunning}
+            />
+          </aside>
+
+          {/* RIGHT: before / after */}
+          <section className="lg:col-span-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* BEFORE */}
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body gap-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="card-title text-base">Before</h3>
+                  </div>
+                  <div className="rounded-box border-base-300 bg-base-200 border p-2">
+                    {imgUrl ? (
+                      <img
+                        src={imgUrl}
+                        alt="Original"
+                        className="mx-auto max-h-[60vh] w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="text-base-content/60 grid h-[40vh] place-items-center text-sm">
+                        Upload an image to preview
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* AFTER */}
+              <div className="card bg-base-100 shadow-xl">
+                <div className="card-body gap-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="card-title text-base">After</h3>
+                    <div className="flex items-center gap-2">
+                      {lastMs !== null && (
+                        <div className="badge badge-ghost">
+                          {lastMs.toFixed(1)} ms
+                        </div>
+                      )}
+                      <a
+                        role="button"
+                        href={dlUrl ?? "#"}
+                        download={`stylized_${modelKey}.png`}
+                        aria-disabled={!dlUrl}
+                        className={`btn btn-sm btn-secondary rounded-lg ${dlUrl ? "" : "btn-disabled"}`}
+                      >
+                        Download PNG
+                      </a>
+                    </div>
+                  </div>
+                  <div className="rounded-box border-base-300 bg-base-200 border p-2">
+                    {dlUrl ? (
+                      <img
+                        src={dlUrl}
+                        alt="Stylized"
+                        className="mx-auto max-h-[60vh] w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="text-base-content/60 grid h-[40vh] place-items-center text-sm">
+                        Run to see result
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* status */}
+            <div className="alert bg-base-100 border-base-300 mt-6 border">
+              {isRunning ? (
+                <span className="flex items-center gap-2 text-sm">
+                  <span className="loading loading-spinner loading-xs" />
+                  {status}
+                </span>
+              ) : (
+                <span className="text-sm">{status}</span>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Hidden canvases */}
+        <canvas ref={scratchRef} className="hidden" />
+        <canvas ref={outCanvasRef} className="hidden" />
+      </div>
+    </main>
   );
 }
