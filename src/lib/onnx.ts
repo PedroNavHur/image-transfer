@@ -4,7 +4,7 @@ import { Tensor } from "onnxruntime-web"; // runtime constructor
 
 // ------- image helpers -------
 export function loadImage(src: string) {
-  return new Promise<HTMLImageElement>(resolve => {
+  return new Promise<HTMLImageElement>((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.src = src;
@@ -14,7 +14,7 @@ export function loadImage(src: string) {
 export function rasterize(
   img: HTMLImageElement,
   scratch: HTMLCanvasElement,
-  maxSide: number
+  maxSide: number,
 ) {
   let w = img.naturalWidth;
   let h = img.naturalHeight;
@@ -37,7 +37,7 @@ export function buildInputs(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
-  range: RangeMode
+  range: RangeMode,
 ) {
   const plane = width * height;
   const to01 = (v: number) => v / 255;
@@ -67,7 +67,7 @@ export function buildInputs(
 export function getTensorWH(
   out: ORTTensor,
   fallbackW: number,
-  fallbackH: number
+  fallbackH: number,
 ) {
   const d = out.dims;
 
@@ -91,7 +91,7 @@ export function getTensorWH(
 export function tensorToRgba(
   out: ORTTensor,
   fallbackW: number,
-  fallbackH: number
+  fallbackH: number,
 ): Uint8ClampedArray {
   const dims = out.dims;
   const data = out.data as Float32Array;
@@ -142,7 +142,7 @@ function pickMap(
   W: number,
   H: number,
   a: (v: number) => number,
-  b: (v: number) => number
+  b: (v: number) => number,
 ) {
   const plane = W * H;
   const variance = (map: (v: number) => number) => {
@@ -171,7 +171,7 @@ export async function runAutoLayout(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
-  range: RangeMode
+  range: RangeMode,
 ) {
   const { xNHWC, xNCHW } = buildInputs(rgba, width, height, range);
 

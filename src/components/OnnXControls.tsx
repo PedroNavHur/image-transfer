@@ -45,7 +45,7 @@ export default function OnnxControls({
       const f = ev.dataTransfer.files?.[0];
       if (f) onPickImage(f);
     },
-    [onPickImage]
+    [onPickImage],
   );
 
   return (
@@ -55,7 +55,7 @@ export default function OnnxControls({
 
         {/* preset pills */}
         <div className="flex flex-wrap gap-2">
-          {presets.map(p => (
+          {presets.map((p) => (
             <button
               key={p.key}
               onClick={() => onChangeModel(p.key)}
@@ -67,15 +67,15 @@ export default function OnnxControls({
             </button>
           ))}
         </div>
-        {presets.find(p => p.key === modelKey)?.hint && (
+        {presets.find((p) => p.key === modelKey)?.hint && (
           <div className="text-xs opacity-70">
-            {presets.find(p => p.key === modelKey)?.hint}
+            {presets.find((p) => p.key === modelKey)?.hint}
           </div>
         )}
 
         {/* image dropzone */}
         <div
-          onDragOver={e => {
+          onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
           }}
@@ -93,7 +93,7 @@ export default function OnnxControls({
                 <span>📷</span>
               </div>
             </div>
-            <div className="text-sm text-base-content/70">
+            <div className="text-base-content/70 text-sm">
               Drag & drop an image here
             </div>
             <div className="divider my-1">or</div>
@@ -108,11 +108,11 @@ export default function OnnxControls({
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={e =>
+              onChange={(e) =>
                 e.target.files?.[0] && onPickImage(e.target.files[0])
               }
             />
-            <div className="text-xs text-base-content/60">
+            <div className="text-base-content/60 text-xs">
               Your image stays in the browser • Auto-resized to 512px max side
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function OnnxControls({
             </div>
             <select
               value={range}
-              onChange={e => onChangeRange(e.target.value as RangeMode)}
+              onChange={(e) => onChangeRange(e.target.value as RangeMode)}
               className="select select-bordered"
             >
               <option value="0to1">[0,1]</option>

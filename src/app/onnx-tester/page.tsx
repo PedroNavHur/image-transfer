@@ -23,14 +23,14 @@ export default function OnnxTesterPage() {
   } = useOnnxStylizer({ modelKey: "ghibli", range: "0to1" });
 
   return (
-    <main className="min-h-dvh bg-base-200 relative overflow-hidden">
+    <main className="bg-base-200 relative min-h-dvh overflow-hidden">
       {/* soft glow */}
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-secondary/20 blur-3xl" />
+        <div className="bg-primary/20 absolute -top-32 -left-32 h-80 w-80 rounded-full blur-3xl" />
+        <div className="bg-secondary/20 absolute -right-24 -bottom-40 h-96 w-96 rounded-full blur-3xl" />
       </div>
 
-      <div className="mx-auto w-full max-w-7xl p-6 space-y-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
         {/* Navbar */}
         <div className="navbar rounded-box bg-base-100/80 shadow backdrop-blur">
           <div className="flex-1">
@@ -60,7 +60,7 @@ export default function OnnxTesterPage() {
                 label: v.label,
                 hint: v.hint,
               }))}
-              onChangeModel={k => setModelKey(k as PresetKey)}
+              onChangeModel={(k) => setModelKey(k as PresetKey)}
               onPickImage={pickImage}
               onChangeRange={setRange}
               onRun={run}
@@ -78,7 +78,7 @@ export default function OnnxTesterPage() {
                   <div className="flex items-center justify-between">
                     <h3 className="card-title text-base">Before</h3>
                   </div>
-                  <div className="rounded-box border border-base-300 bg-base-200 p-2">
+                  <div className="rounded-box border-base-300 bg-base-200 border p-2">
                     {imgUrl ? (
                       <img
                         src={imgUrl}
@@ -87,7 +87,7 @@ export default function OnnxTesterPage() {
                         draggable={false}
                       />
                     ) : (
-                      <div className="grid h-[40vh] place-items-center text-base-content/60 text-sm">
+                      <div className="text-base-content/60 grid h-[40vh] place-items-center text-sm">
                         Upload an image to preview
                       </div>
                     )}
@@ -116,7 +116,7 @@ export default function OnnxTesterPage() {
                       </a>
                     </div>
                   </div>
-                  <div className="rounded-box border border-base-300 bg-base-200 p-2">
+                  <div className="rounded-box border-base-300 bg-base-200 border p-2">
                     {dlUrl ? (
                       <img
                         src={dlUrl}
@@ -125,7 +125,7 @@ export default function OnnxTesterPage() {
                         draggable={false}
                       />
                     ) : (
-                      <div className="grid h-[40vh] place-items-center text-base-content/60 text-sm">
+                      <div className="text-base-content/60 grid h-[40vh] place-items-center text-sm">
                         Run to see result
                       </div>
                     )}
@@ -135,7 +135,7 @@ export default function OnnxTesterPage() {
             </div>
 
             {/* status */}
-            <div className="mt-6 alert bg-base-100 border border-base-300">
+            <div className="alert bg-base-100 border-base-300 mt-6 border">
               {isRunning ? (
                 <span className="flex items-center gap-2 text-sm">
                   <span className="loading loading-spinner loading-xs" />

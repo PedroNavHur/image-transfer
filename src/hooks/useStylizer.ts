@@ -28,10 +28,10 @@ type StylizerState = {
 };
 
 export function useOnnxStylizer(
-  initial: { modelKey?: PresetKey; range?: RangeMode } = {}
+  initial: { modelKey?: PresetKey; range?: RangeMode } = {},
 ): StylizerState {
   const [modelKey, setModelKey] = useState<PresetKey>(
-    initial.modelKey ?? "ghibli"
+    initial.modelKey ?? "ghibli",
   );
   const [status, setStatus] = useState<string>("Pick a style and an image.");
   const [range, setRange] = useState<RangeMode>(initial.range ?? "0to1");
@@ -49,7 +49,7 @@ export function useOnnxStylizer(
   const scratchRef = useRef<HTMLCanvasElement | null>(null);
 
   const sessionRef = useRef<Awaited<ReturnType<typeof createSession>> | null>(
-    null
+    null,
   );
   const inputNameRef = useRef<string>("");
 
@@ -112,7 +112,7 @@ export function useOnnxStylizer(
         setDlUrl(null);
       }
     },
-    [dlUrl]
+    [dlUrl],
   );
 
   const run = useCallback(async () => {
@@ -137,7 +137,7 @@ export function useOnnxStylizer(
         rgba,
         width,
         height,
-        range
+        range,
       );
 
       const { rgbaOut, W, H, layoutUsed, ms } = result;
@@ -204,12 +204,12 @@ function getErrorMessage(e: unknown): string {
 
 async function canvasToBlobURL(
   c: HTMLCanvasElement,
-  type: string = "image/png"
+  type: string = "image/png",
 ): Promise<string> {
   const blob = await new Promise<Blob>((resolve, reject) => {
     c.toBlob(
-      b => (b ? resolve(b) : reject(new Error("toBlob returned null"))),
-      type
+      (b) => (b ? resolve(b) : reject(new Error("toBlob returned null"))),
+      type,
     );
   });
   return URL.createObjectURL(blob);
