@@ -3,9 +3,9 @@ import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <main className="bg-base-200 relative min-h-dvh overflow-hidden">
+    <main className="bg-base-200 relative min-h-dvh">
       {/* soft gradient blobs */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
+      <div className="pointer-events-none absolute inset-0 -z-20">
         <div className="bg-primary/20 absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full blur-3xl" />
         <div className="bg-secondary/20 absolute -right-40 -bottom-40 h-[30rem] w-[30rem] rounded-full blur-3xl" />
       </div>
@@ -23,7 +23,7 @@ export default function LandingPage() {
               browser.
             </h1>
             <p className="text-base-content/70">
-              Zero uploads. Private by design. AnimeGANv3 and Fast Neural Style
+              Zero uploads. Private by design. Fast Neural Style Transfer
               running locally with ONNX Runtime Web. Dial the{" "}
               <b>style strength</b> to taste and download instantly.
             </p>
@@ -102,9 +102,7 @@ export default function LandingPage() {
           <li className="step step-primary">
             Upload an image (processed entirely in your browser).
           </li>
-          <li className="step step-primary">
-            Pick a style (AnimeGANv3 or Fast Neural Style).
-          </li>
+          <li className="step step-primary">Pick a style (ONNX Models).</li>
           <li className="step step-primary">
             Adjust strength & download your PNG.
           </li>
@@ -196,7 +194,7 @@ export default function LandingPage() {
 
           <div className="card border-base-300 bg-base-100 border shadow-xl">
             <div className="card-body">
-              <h3 className="card-title">Pro (Optional)</h3>
+              <h3 className="card-title">Pro (Coming Soon)</h3>
               <p className="text-base-content/70">
                 Server-side heavy models (e.g., Flux, SDXL variants) via
                 provider APIs.
@@ -204,7 +202,7 @@ export default function LandingPage() {
               <ul className="mt-2 space-y-1 text-sm">
                 <li>• Higher fidelity & variety</li>
                 <li>• Image-to-Image pipelines</li>
-                <li>• Keep local mode as default</li>
+                <li>• Fully encrypted, nothing stored in our servers</li>
               </ul>
               <div className="card-actions mt-4">
                 <Link href="/studio" className="btn btn-outline rounded-lg">
@@ -255,7 +253,15 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({ emoji, title, text }: { emoji: string; title: string; text: string; }) {
+function FeatureCard({
+  emoji,
+  title,
+  text,
+}: {
+  emoji: string;
+  title: string;
+  text: string;
+}) {
   return (
     <div className="card border-base-300 bg-base-100 border shadow-xl">
       <div className="card-body">
