@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Navbar() {
+  const pathname = usePathname();
+
   return (
     <nav className="navbar mx-auto w-full max-w-7xl px-4 py-3">
       <div className="flex-1">
@@ -10,22 +15,24 @@ export function Navbar() {
       </div>
       <ul className="menu menu-horizontal hidden gap-2 md:flex">
         <li>
-          <a href="#features">Features</a>
+          <Link href="/#features">Features</Link>
         </li>
         <li>
-          <a href="#models">Models</a>
+          <Link href="/#models">Models</Link>
         </li>
         <li>
-          <a href="#pricing">Pricing</a>
+          <Link href="/#pricing">Pricing</Link>
         </li>
         <li>
-          <a href="#faq">FAQ</a>
+          <Link href="/#faq">FAQ</Link>
         </li>
       </ul>
       <div className="flex-none">
-        <Link href="/studio" className="btn btn-primary rounded-lg">
-          Open Studio
-        </Link>
+        {pathname !== "/studio" && (
+          <Link href="/studio" className="btn btn-primary rounded-lg">
+            Open Studio
+          </Link>
+        )}
       </div>
     </nav>
   );

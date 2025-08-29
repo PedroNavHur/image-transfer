@@ -12,18 +12,18 @@ export function Footer() {
         </aside>
         <nav>
           <h6 className="footer-title">Links</h6>
-          <a className="link link-hover" href="#features">
+          <Link className="link link-hover" href="/#features">
             Features
-          </a>
-          <a className="link link-hover" href="#models">
+          </Link>
+          <Link className="link link-hover" href="/#models">
             Models
-          </a>
-          <a className="link link-hover" href="#pricing">
+          </Link>
+          <Link className="link link-hover" href="/#pricing">
             Pricing
-          </a>
-          <a className="link link-hover" href="#faq">
+          </Link>
+          <Link className="link link-hover" href="/#faq">
             FAQ
-          </a>
+          </Link>
         </nav>
         <nav>
           <h6 className="footer-title">App</h6>
