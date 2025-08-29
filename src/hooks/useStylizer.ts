@@ -45,6 +45,17 @@ type ManifestEntry = {
   opset: number;
 };
 
+type CacheEntry = {
+  modelKey: PresetKey;
+  imgUrl: string;
+  base: Uint8ClampedArray; // preprocessed original at W×H
+  stylized: Uint8ClampedArray; // model output RGBA at W×H
+  W: number;
+  H: number;
+  ms: number; // timing from last inference
+  layout: "NHWC" | "NCHW";
+};
+
 function specFor(publicPath: string): ManifestEntry | null {
   const key = publicPath.replace(/^\/?models\//, "");
   return (manifest as Record<string, ManifestEntry | undefined>)[key] ?? null;
@@ -84,6 +95,7 @@ export function useOnnxStylizer(
   const imgUrlPrev = useRef<string | null>(null);
 
   const [dlUrl, setDlUrl] = useState<string | null>(null);
+  const dlUrlPrev = useRef<string | null>(null);
 
   const outCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const scratchRef = useRef<HTMLCanvasElement | null>(null);
@@ -93,12 +105,15 @@ export function useOnnxStylizer(
   );
   const inputNameRef = useRef<string>("");
 
+  /** Cache only the most recent (modelKey + imgUrl) inference. */
+  const lastResultRef = useRef<CacheEntry | null>(null);
+
   // revoke blob url on replace/unmount
   useEffect(
     () => () => {
-      if (dlUrl) URL.revokeObjectURL(dlUrl);
+      if (dlUrlPrev.current) URL.revokeObjectURL(dlUrlPrev.current);
     },
-    [dlUrl],
+    [],
   );
   // revoke previous image url on unmount
   useEffect(
@@ -108,8 +123,9 @@ export function useOnnxStylizer(
     [],
   );
 
-  // clean up dlUrl when model changes
+  // clear cache when model changes
   useEffect(() => {
+    lastResultRef.current = null;
     if (dlUrl) {
       URL.revokeObjectURL(dlUrl);
       setDlUrl(null);
@@ -150,13 +166,61 @@ export function useOnnxStylizer(
       imgUrlPrev.current = url;
       setImgUrl(url);
       setLastMs(null);
-      if (dlUrl) {
-        URL.revokeObjectURL(dlUrl);
-        setDlUrl(null);
+      lastResultRef.current = null;
+      if (dlUrlPrev.current) {
+        URL.revokeObjectURL(dlUrlPrev.current);
+        dlUrlPrev.current = null;
       }
+      setDlUrl(null);
     },
     [dlUrl],
   );
+
+  /** Draw a given RGBA buffer into output canvas and refresh the download URL. */
+  const drawToCanvasAndSetDownload = useCallback(
+    async (rgba: Uint8ClampedArray, W: number, H: number) => {
+      const c = outCanvasRef.current;
+      if (!c) {
+        setStatus("Error: output canvas not available");
+        return;
+      }
+      const ctx = c.getContext("2d");
+      if (!ctx) {
+        setStatus("Error: 2D context not available");
+        return;
+      }
+      c.width = W;
+      c.height = H;
+      const imgData = ctx.createImageData(W, H);
+      imgData.data.set(rgba);
+      ctx.putImageData(imgData, 0, 0);
+
+      const url = await canvasToBlobURL(c);
+      if (dlUrlPrev.current) URL.revokeObjectURL(dlUrlPrev.current);
+      dlUrlPrev.current = url;
+      setDlUrl(url);
+    },
+    [outCanvasRef],
+  );
+
+  /** Re-blend from cache when strength changes (no inference). */
+  useEffect(() => {
+    const entry = lastResultRef.current;
+    if (!entry) return;
+    if (entry.modelKey !== modelKey || entry.imgUrl !== imgUrl) return;
+
+    const s01 = Math.max(0, Math.min(1, strength / 100));
+    const blended =
+      s01 >= 1
+        ? entry.stylized
+        : s01 <= 0
+          ? entry.base
+          : mixRGBA(entry.base, entry.stylized, s01);
+
+    // don't change lastMs; just redraw and keep status concise
+    void drawToCanvasAndSetDownload(blended, entry.W, entry.H);
+    setStatus(`Strength: ${strength}%`);
+  }, [strength, modelKey, imgUrl, drawToCanvasAndSetDownload]);
 
   const run = useCallback(async () => {
     if (!ready || !imgUrl || !sessionRef.current || isRunning) return;
@@ -185,6 +249,48 @@ export function useOnnxStylizer(
       const inputRange: RangeMode = fns ? "0to1" : "m1to1";
       const postMode: PostMode = fns ? "minmax255" : "auto";
 
+      // If we already have a cached result for this (modelKey, imgUrl) at same output W×H, skip inference.
+      const cached = lastResultRef.current;
+      if (cached && cached.modelKey === modelKey && cached.imgUrl === imgUrl) {
+        // Ensure base matches cached W×H (rare mismatch)
+        let baseAtWH = pre.rgba;
+        if (cached.W !== pre.width || cached.H !== pre.height) {
+          if (fns) {
+            baseAtWH = letterboxTo(img, scratch, cached.W, cached.H).rgba;
+          } else {
+            scratch.width = cached.W;
+            scratch.height = cached.H;
+            const sctx = scratch.getContext("2d");
+            if (!sctx) {
+              setStatus("Error: 2D context not available");
+              return;
+            }
+            sctx.clearRect(0, 0, cached.W, cached.H);
+            sctx.drawImage(img, 0, 0, cached.W, cached.H);
+            baseAtWH = sctx.getImageData(0, 0, cached.W, cached.H).data;
+          }
+          // update cache base to match its W×H for perfect blending next time
+          lastResultRef.current = { ...cached, base: baseAtWH };
+        }
+
+        const s01 = Math.max(0, Math.min(1, strength / 100));
+        const blended =
+          s01 >= 1
+            ? cached.stylized
+            : s01 <= 0
+              ? (lastResultRef.current?.base ?? pre.rgba)
+              : mixRGBA(
+                  lastResultRef.current?.base ?? pre.rgba,
+                  cached.stylized,
+                  s01,
+                );
+
+        await drawToCanvasAndSetDownload(blended, cached.W, cached.H);
+        setLastMs(cached.ms);
+        setStatus(`Cached blend • ${cached.ms.toFixed(1)} ms (prev)`);
+        return;
+      }
+
       setStatus("Stylizing…");
       const { rgbaOut, W, H, layoutUsed, ms } = await runAutoLayout(
         sessionRef.current,
@@ -196,12 +302,11 @@ export function useOnnxStylizer(
         postMode,
       );
 
-      // --- Blend strength: mix original preprocessed (base) with stylized ---
-      let base = pre.rgba;
-      if (pre.width !== W || pre.height !== H) {
-        // Rare mismatch: regenerate base at output size
+      // Ensure base matches output size for blending & caching
+      let baseAtWH = pre.rgba;
+      if (W !== pre.width || H !== pre.height) {
         if (fns) {
-          base = letterboxTo(img, scratch, W, H).rgba;
+          baseAtWH = letterboxTo(img, scratch, W, H).rgba;
         } else {
           scratch.width = W;
           scratch.height = H;
@@ -212,35 +317,32 @@ export function useOnnxStylizer(
           }
           sctx.clearRect(0, 0, W, H);
           sctx.drawImage(img, 0, 0, W, H);
-          base = sctx.getImageData(0, 0, W, H).data;
+          baseAtWH = sctx.getImageData(0, 0, W, H).data;
         }
       }
+
+      // Cache for future strength-only updates
+      lastResultRef.current = {
+        modelKey,
+        imgUrl,
+        base: baseAtWH,
+        stylized: rgbaOut,
+        W,
+        H,
+        ms,
+        layout: layoutUsed,
+      };
+
+      // Blend with current strength and draw
       const s01 = Math.max(0, Math.min(1, strength / 100));
       const blended =
-        s01 >= 1 ? rgbaOut : s01 <= 0 ? base : mixRGBA(base, rgbaOut, s01);
-      // ----------------------------------------------------------------------
+        s01 >= 1
+          ? rgbaOut
+          : s01 <= 0
+            ? baseAtWH
+            : mixRGBA(baseAtWH, rgbaOut, s01);
 
-      const c = outCanvasRef.current;
-      if (!c) {
-        setStatus("Error: output canvas not available");
-        return;
-      }
-      const ctx = c.getContext("2d");
-      if (!ctx) {
-        setStatus("Error: 2D context not available");
-        return;
-      }
-
-      c.width = W;
-      c.height = H;
-      const imgData = ctx.createImageData(W, H);
-      imgData.data.set(blended);
-      ctx.putImageData(imgData, 0, 0);
-
-      const url = await canvasToBlobURL(c);
-      if (dlUrl) URL.revokeObjectURL(dlUrl);
-      setDlUrl(url);
-
+      await drawToCanvasAndSetDownload(blended, W, H);
       setLastMs(ms);
       setStatus(`Done in ${ms.toFixed(1)} ms (${layoutUsed})`);
     } catch (e) {
@@ -248,7 +350,14 @@ export function useOnnxStylizer(
     } finally {
       setIsRunning(false);
     }
-  }, [ready, imgUrl, isRunning, dlUrl, modelKey, strength]);
+  }, [
+    ready,
+    imgUrl,
+    isRunning,
+    modelKey,
+    strength,
+    drawToCanvasAndSetDownload,
+  ]);
 
   return {
     modelKey,
