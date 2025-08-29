@@ -86,6 +86,15 @@ export function useOnnxStylizer(
     [],
   );
 
+  // clean up dlUrl when model changes
+  useEffect(() => {
+    if (dlUrl) {
+      URL.revokeObjectURL(dlUrl);
+      setDlUrl(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelKey]);
+
   // load model on preset change
   useEffect(() => {
     const preset = PRESETS[modelKey];
@@ -105,10 +114,6 @@ export function useOnnxStylizer(
         setStatus(`Model load failed: ${getErrorMessage(e)}`);
       } finally {
         setLastMs(null);
-        if (dlUrl) {
-          URL.revokeObjectURL(dlUrl);
-          setDlUrl(null);
-        }
       }
     })();
     return () => {
