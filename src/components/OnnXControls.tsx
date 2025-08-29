@@ -86,20 +86,32 @@ export default function OnnxControls({
         {currentHint && <div className="text-xs opacity-70">{currentHint}</div>}
         <div className="form-control">
           <div className="label">
-            <span className="label-text">Style strength</span>
-            <span className="label-text-alt">{strength}%</span>
+            <div className="text-base-content/60 mb-2 text-xs font-semibold uppercase">
+              Style Strength
+            </div>
           </div>
           <input
             type="range"
             min={0}
             max={100}
+            step="25"
             value={strength}
             onChange={(e) => onChangeStrength(parseInt(e.target.value, 10))}
             className="range range-primary"
           />
-          <div className="text-base-content/60 mt-1 flex justify-between text-[10px]">
+          <div className="mt-1 flex justify-between px-2.5 text-[.5rem]">
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
+          <div className="text-base-content/60 mt-1 flex justify-between text-[.625rem]">
             <span>Original</span>
-            <span>Full style</span>
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+            <span>100%</span>
           </div>
         </div>
 
