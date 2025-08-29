@@ -18,18 +18,13 @@
 │   │   ├── fns_candy.onnx
 │   │   ├── fns_mosaic.onnx
 │   │   ├── fns_pointilism.onnx
-│   │   ├── fns_udnie.onnx
-│   │   ├── mosaic-2.onnx
-│   │   └── out.fixed.onnx
+│   │   └── fns_udnie.onnx
 │   ├── next.svg
 │   ├── vercel.svg
 │   └── window.svg
 ├── python
 │   ├── clean_up.py
-│   ├── in.onnx
-│   ├── inspect_models.py
-│   ├── output.txt
-│   └── structure.txt
+│   └── inspect_models.py
 ├── rust-core
 │   ├── Cargo.lock
 │   ├── Cargo.toml
@@ -44,14 +39,16 @@
 │   ├── components
 │   │   └── OnnXControls.tsx
 │   ├── constants
+│   │   ├── model-manifest.json
 │   │   └── presets.ts
 │   ├── hooks
 │   │   └── useStylizer.ts
 │   ├── lib
 │   │   ├── onnx.ts
-│   │   └── ort.ts
+│   │   ├── ort.ts
+│   │   └── spec.ts
 │   └── workers
 ├── structure.txt
 └── tsconfig.json
 
-13 directories, 42 files
+13 directories, 39 files
