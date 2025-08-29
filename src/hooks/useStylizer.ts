@@ -30,6 +30,9 @@ type StylizerState = {
 
   outCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   scratchRef: React.RefObject<HTMLCanvasElement | null>;
+
+  strength: number; // 0..100
+  setStrength: (v: number) => void;
 };
 
 type ManifestEntry = {
@@ -47,6 +50,24 @@ function specFor(publicPath: string): ManifestEntry | null {
   return (manifest as Record<string, ManifestEntry | undefined>)[key] ?? null;
 }
 
+/** Linear blend: out = (1 - t) * base + t * stylized; t in [0,1]. */
+function mixRGBA(
+  base: Uint8ClampedArray,
+  stylized: Uint8ClampedArray,
+  amount01: number,
+): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(stylized.length);
+  const t = Math.min(1, Math.max(0, amount01));
+  const u = 1 - t;
+  for (let i = 0; i < stylized.length; i += 4) {
+    out[i] = u * base[i] + t * stylized[i];
+    out[i + 1] = u * base[i + 1] + t * stylized[i + 1];
+    out[i + 2] = u * base[i + 2] + t * stylized[i + 2];
+    out[i + 3] = 255;
+  }
+  return out;
+}
+
 export function useOnnxStylizer(
   initial: { modelKey?: PresetKey } = {},
 ): StylizerState {
@@ -57,6 +78,7 @@ export function useOnnxStylizer(
   const [ready, setReady] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastMs, setLastMs] = useState<number | null>(null);
+  const [strength, setStrength] = useState<number>(100); // default full style
 
   const [imgUrl, setImgUrl] = useState<string>("");
   const imgUrlPrev = useRef<string | null>(null);
@@ -154,14 +176,13 @@ export function useOnnxStylizer(
       const fns = isFNS(modelKey);
       const spec = specFor(preset.file);
 
-      // Size: FNS → exact 224×224 letterbox; AnimeGAN → max side 512
+      // Preprocess size: FNS → exact 224×224 letterbox; AnimeGAN → longest side 512
       const pre = fns
         ? letterboxTo(img, scratch, spec?.W ?? 224, spec?.H ?? 224)
         : rasterize(img, scratch, RESIZE_MAX);
 
-      // Input range: FNS → [0,1]; AnimeGAN → [-1,1]
+      // Input/output conventions
       const inputRange: RangeMode = fns ? "0to1" : "m1to1";
-      // Post mode: FNS → minmax to [0,255]; AnimeGAN → auto
       const postMode: PostMode = fns ? "minmax255" : "auto";
 
       setStatus("Stylizing…");
@@ -174,6 +195,30 @@ export function useOnnxStylizer(
         inputRange,
         postMode,
       );
+
+      // --- Blend strength: mix original preprocessed (base) with stylized ---
+      let base = pre.rgba;
+      if (pre.width !== W || pre.height !== H) {
+        // Rare mismatch: regenerate base at output size
+        if (fns) {
+          base = letterboxTo(img, scratch, W, H).rgba;
+        } else {
+          scratch.width = W;
+          scratch.height = H;
+          const sctx = scratch.getContext("2d");
+          if (!sctx) {
+            setStatus("Error: 2D context not available");
+            return;
+          }
+          sctx.clearRect(0, 0, W, H);
+          sctx.drawImage(img, 0, 0, W, H);
+          base = sctx.getImageData(0, 0, W, H).data;
+        }
+      }
+      const s01 = Math.max(0, Math.min(1, strength / 100));
+      const blended =
+        s01 >= 1 ? rgbaOut : s01 <= 0 ? base : mixRGBA(base, rgbaOut, s01);
+      // ----------------------------------------------------------------------
 
       const c = outCanvasRef.current;
       if (!c) {
@@ -189,7 +234,7 @@ export function useOnnxStylizer(
       c.width = W;
       c.height = H;
       const imgData = ctx.createImageData(W, H);
-      imgData.data.set(rgbaOut);
+      imgData.data.set(blended);
       ctx.putImageData(imgData, 0, 0);
 
       const url = await canvasToBlobURL(c);
@@ -203,7 +248,7 @@ export function useOnnxStylizer(
     } finally {
       setIsRunning(false);
     }
-  }, [ready, imgUrl, isRunning, dlUrl, modelKey]);
+  }, [ready, imgUrl, isRunning, dlUrl, modelKey, strength]);
 
   return {
     modelKey,
@@ -218,6 +263,8 @@ export function useOnnxStylizer(
     run,
     outCanvasRef,
     scratchRef,
+    strength,
+    setStrength,
   };
 }
 

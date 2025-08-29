@@ -28,6 +28,8 @@ export default function OnnxTester() {
     run,
     outCanvasRef,
     scratchRef,
+    strength,
+    setStrength,
   } = useOnnxStylizer({ modelKey: "ghibli" });
 
   return (
@@ -68,6 +70,8 @@ export default function OnnxTester() {
               onRun={run}
               runDisabled={!ready || !imgUrl || isRunning}
               isRunning={isRunning}
+              strength={strength}
+              onChangeStrength={setStrength}
             />
           </aside>
 
