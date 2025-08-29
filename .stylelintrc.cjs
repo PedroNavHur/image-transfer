@@ -5,5 +5,6 @@ module.exports = {
       true,
       { ignoreAtRules: ["tailwind", "plugin", "theme"] },
     ],
+    "hue-degree-notation": null,
   },
 };
