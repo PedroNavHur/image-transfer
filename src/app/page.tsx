@@ -1,4 +1,6 @@
 // src/app/page.tsx
+import { Settings2, ShieldCheck, Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -62,16 +64,20 @@ export default function LandingPage() {
               <h3 className="card-title text-base">Before / After</h3>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-box border-base-300 bg-base-200 border p-2">
-                  <img
-                    src="https://img.daisyui.com/images/stock/photo-1559181567-c3190ca9959b.webp"
+                  <Image
+                    src="/img/before.jpg"
                     alt="Original example"
+                    width={500}
+                    height={500}
                     className="mx-auto aspect-video w-full rounded-md object-cover"
                   />
                 </div>
                 <div className="rounded-box border-base-300 bg-base-200 border p-2">
-                  <img
-                    src="https://img.daisyui.com/images/stock/photo-1560717789-0ac7c58ac90a-blur.webp"
+                  <Image
+                    src="/img/after.jpg"
                     alt="Stylized example"
+                    width={500}
+                    height={500}
                     className="mx-auto aspect-video w-full rounded-md object-cover"
                   />
                 </div>
@@ -113,17 +119,17 @@ export default function LandingPage() {
       <section id="features" className="mx-auto w-full max-w-7xl px-4 py-10">
         <div className="grid gap-6 md:grid-cols-3">
           <FeatureCard
-            emoji="🛡️"
+            icon={ShieldCheck}
             title="Private by default"
             text="All stylization happens locally with ONNX Runtime Web (WASM). No uploads."
           />
           <FeatureCard
-            emoji="⚡"
+            icon={Zap}
             title="Fast & responsive"
             text="WebAssembly + optimized preprocessing keeps things snappy on modern devices."
           />
           <FeatureCard
-            emoji="🎛️"
+            icon={Settings2}
             title="Style strength"
             text="Blend the stylized output with the original for gentle or bold looks."
           />
@@ -254,11 +260,11 @@ export default function LandingPage() {
 }
 
 function FeatureCard({
-  emoji,
+  icon: Icon,
   title,
   text,
 }: {
-  emoji: string;
+  icon: React.ElementType;
   title: string;
   text: string;
 }) {
@@ -267,7 +273,7 @@ function FeatureCard({
       <div className="card-body">
         <div className="flex items-center gap-3">
           <div className="bg-base-200 grid h-10 w-10 place-items-center rounded-lg text-xl">
-            <span aria-hidden>{emoji}</span>
+            <Icon className="text-primary h-6 w-6" />
           </div>
           <h3 className="card-title text-base">{title}</h3>
         </div>
