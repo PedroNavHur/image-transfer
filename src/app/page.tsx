@@ -61,14 +61,13 @@ export default function LandingPage() {
           {/* Mocked card preview */}
           <div className="card border-base-300 bg-base-100/80 border shadow-lg backdrop-blur">
             <div className="card-body gap-4">
-              <h3 className="card-title text-base">Before / After</h3>
               <CompareSlider
                 before="/img/before.jpg"
                 after="/img/after.png"
                 className="w-full aspect-video rounded-box border"
               />
               <div className="flex items-center justify-between">
-                <div className="badge badge-ghost">AnimeGANv3</div>
+                <div className="badge badge-ghost">FNST Sketch Model</div>
                 <Link
                   href="/studio"
                   className="btn btn-secondary btn-sm rounded-lg"

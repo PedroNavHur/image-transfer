@@ -127,8 +127,8 @@ export default function CompareSlider({
       {showBadges && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-3 py-3">
           <div className="flex justify-between">
-            <span className="badge badge-neutral/80 backdrop-blur">Before</span>
-            <span className="badge badge-primary/80 backdrop-blur">After</span>
+            <span className="badge badge-sm badge-neutral backdrop-blur">Before</span>
+            <span className="badge badge-sm badge-primary backdrop-blur">After</span>
           </div>
         </div>
       )}
