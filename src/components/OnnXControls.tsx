@@ -1,6 +1,7 @@
 "use client";
 
 import type { PresetKey } from "@/constants/presets";
+import { ImageUp } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 type Group = {
@@ -57,7 +58,7 @@ export default function OnnxControls({
     .find((i) => i.key === modelKey)?.hint;
 
   return (
-    <div className="card bg-base-100 shadow-xl">
+    <div className="card bg-base-100 shadow-lg">
       <div className="card-body gap-4">
         <h2 className="card-title">Choose style & image</h2>
 
@@ -84,7 +85,7 @@ export default function OnnxControls({
         </div>
 
         {currentHint && <div className="text-xs opacity-70">{currentHint}</div>}
-        <div className="form-control">
+        <div className="form-control flex flex-col">
           <div className="label">
             <div className="text-base-content/60 mb-2 text-xs font-semibold uppercase">
               Style Strength
@@ -99,19 +100,21 @@ export default function OnnxControls({
             onChange={(e) => onChangeStrength(parseInt(e.target.value, 10))}
             className="range range-primary"
           />
-          <div className="mt-1 flex justify-between px-2.5 text-[.5rem]">
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
-          </div>
-          <div className="text-base-content/60 mt-1 flex justify-between text-[.625rem]">
-            <span>Original</span>
-            <span>25%</span>
-            <span>50%</span>
-            <span>75%</span>
-            <span>100%</span>
+          <div>
+            <div className="mt-1 mr-5 flex justify-between px-2.5 text-[.5rem]">
+              <span>|</span>
+              <span>|</span>
+              <span>|</span>
+              <span>|</span>
+              <span>|</span>
+            </div>
+            <div className="text-base-content/60 mt-1 mr-4 flex justify-between text-[.625rem]">
+              <span>Original</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
           </div>
         </div>
 
@@ -130,9 +133,9 @@ export default function OnnxControls({
           }`}
         >
           <div className="flex flex-col items-center gap-3">
-            <div className="avatar placeholder">
+            <div className="avatar avatar-placeholder">
               <div className="bg-base-300 text-base-content/70 w-14 rounded-full">
-                <span>📷</span>
+                <ImageUp className="text-primary h-6 w-6" />
               </div>
             </div>
             <div className="text-base-content/70 text-sm">

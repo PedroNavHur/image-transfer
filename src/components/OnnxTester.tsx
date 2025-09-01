@@ -42,7 +42,7 @@ export default function OnnxTester() {
 
       <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
         {/* Navbar */}
-        <div className="navbar rounded-box bg-base-100/80 shadow backdrop-blur">
+        <div className="navbar rounded-box bg-base-100/80 shadow-lg backdrop-blur">
           <div className="flex-1">
             <span className="btn btn-ghost text-xl">StyleForge</span>
           </div>
@@ -79,7 +79,7 @@ export default function OnnxTester() {
           <section className="lg:col-span-8">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* BEFORE */}
-              <div className="card bg-base-100 shadow-xl">
+              <div className="card bg-base-100 shadow-lg">
                 <div className="card-body gap-3">
                   <div className="flex items-center justify-between">
                     <h3 className="card-title text-base">Before</h3>
@@ -104,7 +104,7 @@ export default function OnnxTester() {
               </div>
 
               {/* AFTER */}
-              <div className="card bg-base-100 shadow-xl">
+              <div className="card bg-base-100 shadow-lg">
                 <div className="card-body gap-3">
                   <div className="flex items-center justify-between">
                     <h3 className="card-title text-base">After</h3>

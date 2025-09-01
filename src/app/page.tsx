@@ -1,13 +1,13 @@
 // src/app/page.tsx
+import CompareSlider from "@/components/CompareSlider";
 import { Settings2, ShieldCheck, Zap } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <main className="bg-base-200 relative min-h-dvh">
+    <main className="bg-base-200 relative flex-grow">
       {/* soft gradient blobs */}
-      <div className="pointer-events-none absolute inset-0 -z-20">
+      <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
         <div className="bg-primary/20 absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full blur-3xl" />
         <div className="bg-secondary/20 absolute -right-40 -bottom-40 h-[30rem] w-[30rem] rounded-full blur-3xl" />
       </div>
@@ -39,7 +39,7 @@ export default function LandingPage() {
               </a>
             </div>
 
-            <div className="stats stats-vertical md:stats-horizontal mt-4 w-full shadow">
+            <div className="stats stats-vertical md:stats-horizontal mt-4 w-full shadow-lg">
               <div className="stat">
                 <div className="stat-title">Privacy</div>
                 <div className="stat-value text-primary">100%</div>
@@ -59,29 +59,14 @@ export default function LandingPage() {
           </div>
 
           {/* Mocked card preview */}
-          <div className="card border-base-300 bg-base-100/80 border shadow-xl backdrop-blur">
+          <div className="card border-base-300 bg-base-100/80 border shadow-lg backdrop-blur">
             <div className="card-body gap-4">
               <h3 className="card-title text-base">Before / After</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-box border-base-300 bg-base-200 border p-2">
-                  <Image
-                    src="/img/before.jpg"
-                    alt="Original example"
-                    width={500}
-                    height={500}
-                    className="mx-auto aspect-video w-full rounded-md object-cover"
-                  />
-                </div>
-                <div className="rounded-box border-base-300 bg-base-200 border p-2">
-                  <Image
-                    src="/img/after.jpg"
-                    alt="Stylized example"
-                    width={500}
-                    height={500}
-                    className="mx-auto aspect-video w-full rounded-md object-cover"
-                  />
-                </div>
-              </div>
+              <CompareSlider
+                before="/img/before.jpg"
+                after="/img/after.png"
+                className="w-full aspect-video rounded-box border"
+              />
               <div className="flex items-center justify-between">
                 <div className="badge badge-ghost">AnimeGANv3</div>
                 <Link
@@ -104,7 +89,7 @@ export default function LandingPage() {
             Three simple steps—no sign-in needed.
           </p>
         </div>
-        <ul className="steps steps-vertical md:steps-horizontal mx-auto mt-8 max-w-3xl text-sm">
+        <ul className="steps steps-vertical md:steps-horizontal mx-auto mt-8 w-full text-sm">
           <li className="step step-primary">
             Upload an image (processed entirely in your browser).
           </li>
@@ -130,7 +115,7 @@ export default function LandingPage() {
           />
           <FeatureCard
             icon={Settings2}
-            title="Style strength"
+            title="Control the look"
             text="Blend the stylized output with the original for gentle or bold looks."
           />
         </div>
@@ -138,7 +123,7 @@ export default function LandingPage() {
 
       {/* MODELS */}
       <section id="models" className="mx-auto w-full max-w-7xl px-4 py-10">
-        <div className="card border-base-300 bg-base-100 border shadow-xl">
+        <div className="card border-base-300 bg-base-100 border shadow-lg">
           <div className="card-body">
             <h3 className="card-title">Supported Models</h3>
             <p className="text-base-content/70">
@@ -147,17 +132,20 @@ export default function LandingPage() {
 
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <div>
-                <h4 className="mb-2 text-sm font-semibold">Studio Look</h4>
+                <h4 className="mb-2 text-sm font-semibold">
+                  Studio Look AnimeGanv3 Based Models
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   <span className="badge badge-outline">Ghibli</span>
                   <span className="badge badge-outline">Hayao</span>
                   <span className="badge badge-outline">Shinkai</span>
-                  <span className="badge badge-outline">Cyberpunk</span>
                   <span className="badge badge-outline">Sketch</span>
                 </div>
               </div>
               <div>
-                <h4 className="mb-2 text-sm font-semibold">Filter Style</h4>
+                <h4 className="mb-2 text-sm font-semibold">
+                  Filter Style Fast Neural Style Transfer Models{" "}
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   <span className="badge badge-outline">Candy</span>
                   <span className="badge badge-outline">Mosaic</span>
@@ -179,11 +167,11 @@ export default function LandingPage() {
       {/* PRICING */}
       <section id="pricing" className="mx-auto w-full max-w-7xl px-4 py-10">
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="card border-base-300 bg-base-100 border shadow-xl">
+          <div className="card border-base-300 bg-base-100 border shadow-lg">
             <div className="card-body">
               <h3 className="card-title">Free</h3>
               <p className="text-base-content/70">
-                In-browser stylization with our ONNX presets.
+                In-browser stylization with ONNX open source models.
               </p>
               <ul className="mt-2 space-y-1 text-sm">
                 <li>• AnimeGANv3 + Fast Neural Style</li>
@@ -198,12 +186,12 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="card border-base-300 bg-base-100 border shadow-xl">
+          <div className="card border-base-300 bg-base-100 border shadow-lg">
             <div className="card-body">
               <h3 className="card-title">Pro (Coming Soon)</h3>
               <p className="text-base-content/70">
-                Server-side heavy models (e.g., Flux, SDXL variants) via
-                provider APIs.
+                Server-side fine tuned heavy models (e.g., Flux, SDXL variants)
+                via provider APIs.
               </p>
               <ul className="mt-2 space-y-1 text-sm">
                 <li>• Higher fidelity & variety</li>
@@ -249,8 +237,8 @@ export default function LandingPage() {
               Can I fine-tune styles?
             </summary>
             <div className="collapse-content text-base-content/70 text-sm">
-              Not yet in-app. You can adjust strength, pick alternate models, or
-              use optional server styles for variety.
+              Not yet in-app. You can adjust strength or pick alternate models
+              for variety.
             </div>
           </details>
         </div>
@@ -269,7 +257,7 @@ function FeatureCard({
   text: string;
 }) {
   return (
-    <div className="card border-base-300 bg-base-100 border shadow-xl">
+    <div className="card border-base-300 bg-base-100 border shadow-lg">
       <div className="card-body">
         <div className="flex items-center gap-3">
           <div className="bg-base-200 grid h-10 w-10 place-items-center rounded-lg text-xl">
