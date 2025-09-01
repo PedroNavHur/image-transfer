@@ -1,17 +1,17 @@
 // src/components/CompareSlider.tsx
 "use client";
-
+import Image from "next/image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
-  before: string;                // e.g. "/img/before.jpg"
-  after: string;                 // e.g. "/img/after.png"
+  before: string;
+  after: string;
   altBefore?: string;
   altAfter?: string;
-  className?: string;            // e.g. "w-full aspect-video rounded-box border"
-  initial?: number;              // 0..1 (default 0.5)
+  className?: string;
+  initial?: number;               // 0..1
   fit?: "cover" | "contain";
-  showBadges?: boolean;          // Before/After pills
+  showBadges?: boolean;
 };
 
 export default function CompareSlider({
@@ -25,9 +25,10 @@ export default function CompareSlider({
   showBadges = true,
 }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [t, setT] = useState(clamp01(initial)); // 0..1
+  const [t, setT] = useState(clamp01(initial));
   const dragging = useRef(false);
 
+  // Compute t from a clientX, based on container bounds
   const setFromX = useCallback((clientX: number) => {
     const el = rootRef.current;
     if (!el) return;
@@ -35,19 +36,30 @@ export default function CompareSlider({
     setT(clamp01((clientX - r.left) / r.width));
   }, []);
 
+  // Global handlers are stable and added once
+  const handleMove = useCallback((e: PointerEvent) => {
+    if (!dragging.current) return;
+    setFromX(e.clientX);
+  }, [setFromX]);
+
+  const handleUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, [handleMove, handleUp]);
+
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+    e.preventDefault();
     dragging.current = true;
     setFromX(e.clientX);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
   };
-  const onMove = (e: PointerEvent) => dragging.current && setFromX(e.clientX);
-  const onUp = () => {
-    dragging.current = false;
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-  };
-  useEffect(() => () => onUp(), []);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? 0.1 : 0.02;
@@ -59,8 +71,6 @@ export default function CompareSlider({
 
   const pct = t * 100;
   const fitCls = fit === "contain" ? "object-contain" : "object-cover";
-
-  // Clip left side to 'pct%'. Keep overlay full size so image does NOT squash.
   const clip = `inset(0 ${100 - pct}% 0 0)`; // top right bottom left
 
   return (
@@ -77,23 +87,25 @@ export default function CompareSlider({
       onPointerDown={onPointerDown}
     >
       {/* Bottom layer: AFTER (full size) */}
-      <img
+      <Image
         src={after}
         alt={altAfter}
-        className={`absolute inset-0 h-full w-full ${fitCls}`}
+        fill
+        className={fitCls}
         draggable={false}
       />
 
-      {/* Top layer: BEFORE (full size + clip) */}
+      {/* BEFORE (top, clipped) */}
       <div
         className="absolute inset-0 will-change-[clip-path]"
         style={{ clipPath: clip, WebkitClipPath: clip }}
         aria-hidden
       >
-        <img
+        <Image
           src={before}
           alt={altBefore}
-          className={`absolute inset-0 h-full w-full ${fitCls}`}
+          fill
+          className={fitCls}
           draggable={false}
         />
       </div>
@@ -115,8 +127,8 @@ export default function CompareSlider({
       {showBadges && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-3 py-3">
           <div className="flex justify-between">
-            <span className="badge badge-neutral backdrop-blur">Before</span>
-            <span className="badge badge-primary backdrop-blur">After</span>
+            <span className="badge badge-neutral/80 backdrop-blur">Before</span>
+            <span className="badge badge-primary/80 backdrop-blur">After</span>
           </div>
         </div>
       )}
