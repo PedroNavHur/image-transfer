@@ -1,6 +1,10 @@
 "use client";
 import type { InferenceSession, Tensor as ORTTensor } from "onnxruntime-web";
 import { Tensor } from "onnxruntime-web";
+import { createSession } from "@/lib/ort";
+import { RESIZE_MAX, PRESETS, type PresetKey, type Family } from "@/constants/presets";
+
+// ORT environment is configured in src/lib/ort.ts
 
 // ---------- image helpers ----------
 export function loadImage(src: string) {
@@ -32,7 +36,7 @@ export function rasterize(
   return { width: w, height: h, rgba: data };
 }
 
-// NEW: exact WxH with letterbox (centered, no stretch)
+// exact WxH with letterbox (centered, no stretch)
 export function letterboxTo(
   img: HTMLImageElement,
   scratch: HTMLCanvasElement,
@@ -116,37 +120,27 @@ export function tensorToRgba_auto(
 
   let get: (c: 0 | 1 | 2, p: number) => number;
   if (dims.length === 4 && dims[1] === 3) {
-    // NCHW
     const plane = W * H;
     get = (c, p) => data[p + c * plane];
   } else if (dims.length === 4 && dims[3] === 3) {
-    // NHWC
     get = (c, p) => data[p * 3 + c];
   } else if (dims.length === 3 && dims[0] === 3) {
-    // CHW
     const plane = W * H;
     get = (c, p) => data[p + c * plane];
   } else {
-    // HWC or fallback
     get = (c, p) => data[p * 3 + c];
   }
 
-  // choose mapping between [0,1] and [-1,1]
   const as01 = (v: number) => clamp255(v * 255);
   const asM11 = (v: number) => clamp255((v + 1) * 127.5);
   const rgba = new Uint8ClampedArray(W * H * 4);
 
-  // simple variance-based pick
   const plane = W * H;
   const variance = (map: (v: number) => number) => {
-    let s = 0,
-      s2 = 0,
-      n = 0;
+    let s = 0, s2 = 0, n = 0;
     for (let p = 0; p < Math.min(plane, 500); p += 5) {
       const m = (map(get(0, p)) + map(get(1, p)) + map(get(2, p))) / 3;
-      s += m;
-      s2 += m * m;
-      n++;
+      s += m; s2 += m * m; n++;
     }
     const mean = s / n;
     return s2 / n - mean * mean;
@@ -162,7 +156,6 @@ export function tensorToRgba_auto(
   return rgba;
 }
 
-// NEW: robust min-max mapping (good for FNS which may output raw 0..255 or arbitrary range)
 export function tensorToRgba_minmax(
   out: ORTTensor,
   fallbackW: number,
@@ -185,24 +178,15 @@ export function tensorToRgba_minmax(
     get = (c, p) => data[p * 3 + c];
   }
 
-  // detect quick cases first
-  let min = Infinity,
-    max = -Infinity;
+  let min = Infinity, max = -Infinity;
   const plane = W * H;
   for (let p = 0; p < plane; p++) {
-    const r = get(0, p),
-      g = get(1, p),
-      b = get(2, p);
-    if (r < min) min = r;
-    if (g < min) min = g;
-    if (b < min) min = b;
-    if (r > max) max = r;
-    if (g > max) max = g;
-    if (b > max) max = b;
+    const r = get(0, p), g = get(1, p), b = get(2, p);
+    if (r < min) min = r; if (g < min) min = g; if (b < min) min = b;
+    if (r > max) max = r; if (g > max) max = g; if (b > max) max = b;
   }
 
   const rgba = new Uint8ClampedArray(W * H * 4);
-  // If it already looks like [0,1]
   if (max <= 1.2 && min >= -0.2) {
     for (let p = 0; p < plane; p++) {
       rgba[4 * p + 0] = clamp255(get(0, p) * 255);
@@ -212,7 +196,6 @@ export function tensorToRgba_minmax(
     }
     return rgba;
   }
-  // If ~[-1,1]
   if (max <= 1.1 && min >= -1.1) {
     for (let p = 0; p < plane; p++) {
       rgba[4 * p + 0] = clamp255((get(0, p) * 0.5 + 0.5) * 255);
@@ -222,7 +205,6 @@ export function tensorToRgba_minmax(
     }
     return rgba;
   }
-  // General case: min-max to [0,255]
   const gain = max === min ? 1 : 255 / (max - min);
   for (let p = 0; p < plane; p++) {
     rgba[4 * p + 0] = clamp255((get(0, p) - min) * gain);
@@ -233,9 +215,106 @@ export function tensorToRgba_minmax(
   return rgba;
 }
 
+// ---------- NEW: model loader (fetch -> Uint8Array -> ORT) ----------
+export async function loadSessionForPreset(key: PresetKey) {
+  const url = PRESETS[key].file; // e.g. "/models-int8/fns_candy.int8.onnx"
+  return await createSession(url);
+}
+
+// ---------- NEW: family-aware input builder ----------
+function centerCropSquare(img: HTMLImageElement) {
+  const s = Math.min(img.naturalWidth, img.naturalHeight);
+  const sx = Math.floor((img.naturalWidth - s) / 2);
+  const sy = Math.floor((img.naturalHeight - s) / 2);
+  return { sx, sy, s };
+}
+
+function toTensorNHWC(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  range: RangeMode,
+) {
+  const { xNHWC } = buildInputs(rgba, w, h, range);
+  return new Tensor("float32", xNHWC, [1, h, w, 3] as const);
+}
+
+function toTensorNCHW(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  range: RangeMode,
+) {
+  const { xNCHW } = buildInputs(rgba, w, h, range);
+  return new Tensor("float32", xNCHW, [1, 3, h, w] as const);
+}
+
+/**
+ * Builds the correct input tensor for a given family:
+ *  - 'fns': 224x224 NCHW float32 (center-crop then resize)
+ *  - 'agan': NHWC float32, aspect-preserving, max side = RESIZE_MAX
+ */
+export function makeInputForFamily(
+  family: Family,
+  img: HTMLImageElement,
+  scratch: HTMLCanvasElement,
+  range: RangeMode = "0to1",
+) {
+  if (family === "fns") {
+    const { sx, sy, s } = centerCropSquare(img);
+    // Draw the cropped square into a temp canvas at 224x224
+    scratch.width = 224;
+    scratch.height = 224;
+    const ctx = scratch.getContext("2d")!;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, sx, sy, s, s, 0, 0, 224, 224);
+    const { data } = ctx.getImageData(0, 0, 224, 224);
+    const tensor = toTensorNCHW(data, 224, 224, range);
+    return { tensor, width: 224, height: 224, layout: "NCHW" as const };
+  } else {
+    // agan: cap to RESIZE_MAX, NHWC
+    const r = rasterize(img, scratch, RESIZE_MAX);
+    const tensor = toTensorNHWC(r.rgba, r.width, r.height, range);
+    return { tensor, width: r.width, height: r.height, layout: "NHWC" as const };
+  }
+}
+
 // ---------- runner ----------
 export type PostMode = "auto" | "minmax255";
 
+/**
+ * Family-aware runner. Prefer using this instead of runAutoLayout for known models.
+ */
+export async function runFamily(
+  session: InferenceSession,
+  inputName: string,
+  family: Family,
+  img: HTMLImageElement,
+  scratch: HTMLCanvasElement,
+  range: RangeMode,
+  postMode: PostMode = "auto",
+) {
+  const { tensor, width, height } = makeInputForFamily(family, img, scratch, range);
+
+  const t0 = performance.now();
+  const outputs = await session.run({ [inputName]: tensor } as Record<string, ORTTensor>);
+  const t1 = performance.now();
+
+  const outName = session.outputNames[0];
+  const out = outputs[outName];
+  const rgbaOut =
+    postMode === "minmax255"
+      ? tensorToRgba_minmax(out, width, height)
+      : tensorToRgba_auto(out, width, height);
+
+  const { W, H } = getTensorWH(out, width, height);
+  return { rgbaOut, W, H, layoutUsed: tensor.dims.length === 4 && tensor.dims[1] === 3 ? "NCHW" : "NHWC", ms: t1 - t0 };
+}
+
+/**
+ * Backwards-compatible: tries NHWC then NCHW automatically.
+ * (Keep for generic/debug use; prefer runFamily for your presets.)
+ */
 export async function runAutoLayout(
   session: InferenceSession,
   inputName: string,
@@ -270,7 +349,6 @@ export async function runAutoLayout(
 
   const outName = session.outputNames[0];
   const out = outputs[outName];
-
   const { W, H } = getTensorWH(out, width, height);
   const rgbaOut =
     postMode === "minmax255"
@@ -278,4 +356,18 @@ export async function runAutoLayout(
       : tensorToRgba_auto(out, width, height);
 
   return { rgbaOut, W, H, layoutUsed, ms: t1 - t0 };
+}
+
+// ---------- tiny UX helper for presets ----------
+export async function runPreset(
+  key: PresetKey,
+  img: HTMLImageElement,
+  scratch: HTMLCanvasElement,
+  range: RangeMode = "0to1",
+  postMode: PostMode = "auto",
+) {
+  const session = await loadSessionForPreset(key);
+  const inputName = session.inputNames[0];
+  const family = PRESETS[key].family;
+  return await runFamily(session, inputName, family, img, scratch, range, postMode);
 }

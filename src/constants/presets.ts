@@ -7,19 +7,19 @@ export const PRESETS = {
   // Studio Look (AnimeGANv3; dynamic size)
   ghibli: {
     label: "Ghibli",
-    file: "/models/agan_ghibli.onnx",
+    file: "/models-int8/agan_ghibli.int8.onnx",
     hint: "Studio look",
     family: "agan" as const,
   },
   hayao: {
     label: "Hayao",
-    file: "/models/agan_hayao.onnx",
+    file: "/models-int8/agan_hayao.int8.onnx",
     hint: "Studio look",
     family: "agan" as const,
   },
   shinkai: {
     label: "Shinkai",
-    file: "/models/agan_shinkai.onnx",
+    file: "/models-int8/agan_shinkai.int8.onnx",
     hint: "Studio look",
     family: "agan" as const,
   },
@@ -33,25 +33,25 @@ export const PRESETS = {
   // Filter Style (Fast Neural Style; fixed 224×224, NCHW)
   mosaic: {
     label: "Mosaic",
-    file: "/models/fns_mosaic.onnx",
+    file: "/models-int8/fns_mosaic.int8.onnx",
     hint: "224×224",
     family: "fns" as const,
   },
   candy: {
     label: "Candy",
-    file: "/models/fns_candy.onnx",
+    file: "/models-int8/fns_candy.int8.onnx",
     hint: "224×224",
     family: "fns" as const,
   },
   udnie: {
     label: "Udnie",
-    file: "/models/fns_udnie.onnx",
+    file: "/models-int8/fns_udnie.int8.onnx",
     hint: "224×224",
     family: "fns" as const,
   },
   pointilism: {
     label: "Pointilism",
-    file: "/models/fns_pointilism.onnx",
+    file: "/models-int8/fns_pointilism.int8.onnx",
     hint: "224×224",
     family: "fns" as const,
   },

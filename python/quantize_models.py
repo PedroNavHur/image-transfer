@@ -4,6 +4,7 @@ import glob
 import os
 import random
 from typing import Optional, Tuple
+import fnmatch
 
 import numpy as np
 import onnx
@@ -16,6 +17,8 @@ from onnxruntime.quantization import (
     quantize_dynamic,
     quantize_static,
 )
+from onnx import checker as onnx_checker
+from onnx import version_converter
 from PIL import Image
 
 # Pillow resample enum compat
@@ -151,14 +154,33 @@ def quantize_one(
     default_size=256,
     static=True,
     per_channel=True,
-    percentile=None,   # e.g. 99.9 for Percentile; else MinMax
+    percentile=None,  # e.g. 99.9 for Percentile; else MinMax
     qoperator=True,
     op_types=("Conv", "Gemm", "MatMul", "Add"),
+    reduce_range=False,
+    n_samples=200,
+    force_opset: Optional[int] = None,
 ):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
 
     # Detect shape/dtype and input size
-    _m, input_name, layout, dtype, req_h, req_w = get_input_info(src)
+    # Optionally pre-upgrade the FP32 model opset for cleaner quantization
+    model_path_for_quant = src
+    if force_opset is not None:
+        try:
+            base_model = onnx.load(src)
+            if base_model.opset_import and base_model.opset_import[0].version < force_opset:
+                print(f"  └─ upgrading opset: {base_model.opset_import[0].version} -> {force_opset}")
+                upgraded = version_converter.convert_version(base_model, force_opset)
+                # also run shape inference to stabilize value infos
+                upgraded = onnx.shape_inference.infer_shapes(upgraded)
+                tmp_path = dst + ".preopset.onnx"
+                onnx.save(upgraded, tmp_path)
+                model_path_for_quant = tmp_path
+        except Exception as e:
+            print(f"  └─ opset upgrade skipped due to error: {e}")
+
+    _m, input_name, layout, dtype, req_h, req_w = get_input_info(model_path_for_quant)
 
     # Decide size (H,W): use required if present, else default
     if (req_h and req_w) and (req_h > 0 and req_w > 0):
@@ -166,31 +188,46 @@ def quantize_one(
     else:
         H = W = int(default_size)
 
-    print(f"  └─ input='{input_name}' layout={layout} dtype={dtype} size={H}x{W}")
+    print(
+        f"  └─ input='{input_name}' layout={layout} dtype={dtype} size={H}x{W}"
+    )
 
     if static:
-        method = CalibrationMethod.Percentile if percentile is not None else CalibrationMethod.MinMax
-        reader = ImgCalibReader(input_name, calib_imgs, layout, dtype, (H, W), n_samples=200)
+        method = (
+            CalibrationMethod.Percentile
+            if percentile is not None
+            else CalibrationMethod.MinMax
+        )
+        reader = ImgCalibReader(
+            input_name, calib_imgs, layout, dtype, (H, W), n_samples=n_samples
+        )
         quantize_static(
-            model_input=src,
+            model_input=model_path_for_quant,
             model_output=dst,
             calibration_data_reader=reader,
             quant_format=QuantFormat.QOperator if qoperator else QuantFormat.QDQ,
             activation_type=QuantType.QUInt8,
             weight_type=QuantType.QInt8,
             per_channel=per_channel,
-            reduce_range=False,
+            reduce_range=reduce_range,
             calibrate_method=method,
             op_types_to_quantize=list(op_types),
         )
     else:
         quantize_dynamic(
-            model_input=src,
+            model_input=model_path_for_quant,
             model_output=dst,
             weight_type=QuantType.QInt8,
             per_channel=per_channel,
             op_types_to_quantize=["Gemm", "MatMul", "Conv"],
         )
+
+    # Validate the output model is structurally sound
+    try:
+        q_model = onnx.load(dst)
+        onnx_checker.check_model(q_model)
+    except Exception as e:
+        print(f"  ! onnx.checker warning: {e}")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -200,36 +237,112 @@ def main():
     parser.add_argument("--size", type=int, default=256, help="fallback size if model dims are dynamic")
     parser.add_argument("--dynamic", action="store_true", help="use dynamic quantization (no calibration)")
     parser.add_argument("--qdq", action="store_true", help="emit QDQ instead of QOperator")
-    parser.add_argument("--percentile", type=float, default=None, help="e.g., 99.9 to use Percentile calibration")
-    parser.add_argument("--per_channel", action="store_true", default=True)
-    parser.add_argument("--ops", default="Conv,Gemm,MatMul,Add", help="comma-separated list of op types to quantize")
+    parser.add_argument(
+        "--percentile",
+        type=float,
+        default=None,
+        help="e.g., 99.9 to use Percentile calibration (default varies by model)",
+    )
+    # per-channel default True, provide a disable flag
+    parser.add_argument(
+        "--no_per_channel",
+        dest="per_channel",
+        action="store_false",
+        help="disable per-channel weight quantization",
+    )
+    parser.set_defaults(per_channel=True)
+    parser.add_argument(
+        "--force_per_channel",
+        action="store_true",
+        help="override family default and force per-channel weights",
+    )
+    parser.add_argument(
+        "--ops",
+        default="auto",
+        help="comma-separated list of op types to quantize, or 'auto' for model-aware gentle defaults",
+    )
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=160,
+        help="number of calibration samples to use (static only)",
+    )
+    parser.add_argument(
+        "--only",
+        default=None,
+        help="comma-separated list of basenames or glob patterns to include (e.g. 'agan_ghibli.onnx,fns_*.onnx')",
+    )
     args = parser.parse_args()
 
     random.seed(42)
     np.random.seed(42)
 
     models = sorted(glob.glob(os.path.join(args.src, "*.onnx")))
+    if args.only:
+        pats = [p.strip() for p in args.only.split(",") if p.strip()]
+        def keep(path: str) -> bool:
+            base = os.path.basename(path)
+            return any(fnmatch.fnmatch(base, pat) for pat in pats)
+        models = [m for m in models if keep(m)]
     imgs = []
     if os.path.isdir(args.imgdir):
         imgs = [p for p in glob.glob(os.path.join(args.imgdir, "*.*")) if not os.path.isdir(p)]
 
     os.makedirs(args.dst, exist_ok=True)
-    op_types = tuple([s.strip() for s in args.ops.split(",") if s.strip()])
-
     for mpath in models:
         name = os.path.basename(mpath)
         out = os.path.join(args.dst, name.replace(".onnx", ".int8.onnx"))
-        print(f"[quantize] {name} -> {os.path.basename(out)}")
+        # Inspect to select gentle defaults
+        _m, _input_name, layout, _dtype, req_h, req_w = get_input_info(mpath)
+        is_agan = name.startswith("agan_") or layout == "NHWC"
+
+        if args.ops.strip().lower() == "auto":
+            if is_agan:
+                chosen_ops = ("Conv",)  # gentle: only Conv
+            else:
+                chosen_ops = ("Conv", "MatMul")  # FNS: Conv + MatMul
+        else:
+            chosen_ops = tuple([s.strip() for s in args.ops.split(",") if s.strip()])
+
+        # Default percentile if not explicitly provided
+        pct = args.percentile
+        if pct is None:
+            pct = 99.9 if is_agan else 99.5
+
+        # Choose quant format and per-channel default per family
+        per_channel = args.per_channel
+        if is_agan:
+            # Prefer QOperator (QLinearConv) for WASM stability; Conv-only quantization
+            use_qoperator = True
+            per_channel = False  # per-tensor safer by default
+        else:
+            use_qoperator = not args.qdq
+
+        if args.force_per_channel:
+            per_channel = True
+
+        # Force opset 13 minimum to avoid auto-upgrade from 9 in the tool
+        force_opset = 13
+
+        print(
+            f"[quantize] {name} -> {os.path.basename(out)}\n"
+            f"  family={'agan' if is_agan else 'fns'} layout={layout} fixed={bool(req_h and req_w)}\n"
+            f"  ops={chosen_ops} per_channel={per_channel} method={'Percentile' if pct is not None else 'MinMax'} pct={pct} format={'QDQ' if not use_qoperator else 'QOperator'} opset>={force_opset}"
+        )
+
         quantize_one(
             mpath,
             out,
             calib_imgs=imgs,
             default_size=args.size,
             static=not args.dynamic,
-            per_channel=args.per_channel,
-            percentile=args.percentile,
-            qoperator=not args.qdq,
-            op_types=op_types,
+            per_channel=per_channel,
+            percentile=pct,
+            qoperator=use_qoperator,
+            op_types=chosen_ops,
+            reduce_range=False,
+            n_samples=args.samples,
+            force_opset=force_opset,
         )
 
 if __name__ == "__main__":

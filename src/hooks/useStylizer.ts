@@ -146,7 +146,11 @@ export function useOnnxStylizer(
         sessionRef.current = s;
         inputNameRef.current = s.inputNames[0] ?? "";
         setReady(true);
-        setStatus(`Ready: ${preset.label}`);
+        const meta = (s as any).__loadMeta as
+          | { stage: string; source: "int8" | "fp32" }
+          | undefined;
+        const srcTag = meta?.source === "fp32" ? " (FP32 fallback)" : " (INT8)";
+        setStatus(`Ready: ${preset.label}${srcTag}`);
       } catch (e) {
         sessionRef.current = null;
         setStatus(`Model load failed: ${getErrorMessage(e)}`);
@@ -378,6 +382,7 @@ export function useOnnxStylizer(
 }
 
 function getErrorMessage(e: unknown): string {
+  if (typeof e === "number") return `WASM abort ${e}`;
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
   try {
