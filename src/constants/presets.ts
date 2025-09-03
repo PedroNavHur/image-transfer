@@ -25,7 +25,7 @@ export const PRESETS = {
   },
   sketch: {
     label: "Sketch",
-    file: "/models/agan_sketch.onnx",
+    file: "/models-int8/agan_sketch.int8.onnx",
     hint: "Sketch lines",
     family: "agan" as const,
   },

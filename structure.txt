@@ -1,5 +1,5 @@
 .
-├── README.md
+├── daisyui.llms.txt
 ├── eslint.config.mjs
 ├── next-env.d.ts
 ├── next.config.ts
@@ -10,6 +10,9 @@
 ├── public
 │   ├── file.svg
 │   ├── globe.svg
+│   ├── img
+│   │   ├── after.png
+│   │   └── before.jpg
 │   ├── models
 │   │   ├── agan_ghibli.onnx
 │   │   ├── agan_hayao.onnx
@@ -25,6 +28,7 @@
 ├── python
 │   ├── clean_up.py
 │   └── inspect_models.py
+├── README.md
 ├── rust-core
 │   ├── Cargo.lock
 │   ├── Cargo.toml
@@ -35,9 +39,16 @@
 │   │   ├── favicon.ico
 │   │   ├── globals.css
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   └── studio
+│   │       └── page.tsx
 │   ├── components
-│   │   └── OnnXControls.tsx
+│   │   ├── CompareSlider.tsx
+│   │   ├── landing
+│   │   │   ├── Footer.tsx
+│   │   │   └── Navbar.tsx
+│   │   ├── OnnXControls.tsx
+│   │   └── OnnxTester.tsx
 │   ├── constants
 │   │   ├── model-manifest.json
 │   │   └── presets.ts
@@ -51,4 +62,4 @@
 ├── structure.txt
 └── tsconfig.json
 
-13 directories, 39 files
+16 directories, 47 files
