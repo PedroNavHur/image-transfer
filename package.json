@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "quant:agan": "python3 python/quantize_models.py --src public/models-agan --dst public/models-int8 --only agan_ghibli.onnx,agan_hayao.onnx,agan_shinkai.onnx --samples 64 --size 192 --percentile 99.99",
+    "quant:fns": "python3 python/quantize_models.py --src public/models --dst public/models-int8 --only fns_candy.onnx,fns_mosaic.onnx,fns_udnie.onnx,fns_pointilism.onnx --samples 64 --size 224 --percentile 99.9",
+    "quant:ghibli": "python3 python/quantize_models.py --src public/models-agan --dst public/models-int8 --only agan_ghibli.onnx --samples 64 --size 192 --percentile 99.99",
+    "quant:clean": "rm -f public/models-int8/*.preopset.onnx || true"
   },
   "dependencies": {
     "lucide-react": "^0.542.0",

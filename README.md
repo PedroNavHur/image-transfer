@@ -53,6 +53,13 @@ Notes:
 - The script pre‑upgrades FP32 models to opset 13 before quantization for cleaner graphs.
 - It may emit temporary `*.preopset.onnx` files in `public/models-int8/`; these can be deleted.
 
+### NPM Script Shortcuts
+
+- `npm run quant:agan` → AnimeGAN (all): samples=64, size=192, percentile=99.99
+- `npm run quant:fns` → FNS (all): samples=64, size=224, percentile=99.9
+- `npm run quant:ghibli` → Ghibli only (same settings as agan)
+- `npm run quant:clean` → remove any `*.preopset.onnx` intermediates
+
 ## onnxruntime‑web Behavior
 
 - Execution provider order: WebGPU (if available) then WASM.
