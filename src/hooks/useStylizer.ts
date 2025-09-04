@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { PRESETS, RESIZE_MAX, PresetKey, isFNS } from "@/constants/presets";
-import { createSession } from "@/lib/ort";
+import { createSession, type SessionWithMeta } from "@/lib/ort";
 import {
   RangeMode,
   loadImage,
@@ -146,9 +146,7 @@ export function useOnnxStylizer(
         sessionRef.current = s;
         inputNameRef.current = s.inputNames[0] ?? "";
         setReady(true);
-        const meta = (s as any).__loadMeta as
-          | { stage: string; source: "int8" | "fp32" }
-          | undefined;
+        const meta: SessionWithMeta["__loadMeta"] = s.__loadMeta;
         const srcTag = meta?.source === "fp32" ? " (FP32 fallback)" : " (INT8)";
         setStatus(`Ready: ${preset.label}${srcTag}`);
       } catch (e) {

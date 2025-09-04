@@ -1,5 +1,6 @@
 "use client";
 import * as ort from "onnxruntime-web";
+import type { InferenceSession } from "onnxruntime-web";
 
 // Centralized ORT setup (done once before any session is created)
 let initialized = false;
@@ -33,7 +34,18 @@ export function initOrt() {
 // Accept URL/string or bytes; normalize to Uint8Array for strict typings
 type ModelSource = string | URL | ArrayBuffer | Uint8Array;
 
-export async function createSession(model: ModelSource) {
+export type LoadSource = "int8" | "fp32";
+export type LoadMeta = { stage: string; source: LoadSource };
+export interface SessionWithMeta extends InferenceSession {
+  __loadMeta?: LoadMeta;
+}
+
+function setLoadMeta(sess: InferenceSession, meta: LoadMeta): SessionWithMeta {
+  (sess as SessionWithMeta).__loadMeta = meta;
+  return sess as SessionWithMeta;
+}
+
+export async function createSession(model: ModelSource): Promise<SessionWithMeta> {
   initOrt();
 
   let bytes: Uint8Array;
@@ -56,7 +68,7 @@ export async function createSession(model: ModelSource) {
   const debug = ortDebugEnabled();
   const tryCreate = async (
     providers: ("webgpu" | "wasm")[],
-    graphOptimizationLevel: ort.GraphOptimizationLevel,
+    graphOptimizationLevel: "all" | "basic" | "disabled",
     stage: string,
   ) => {
     try {
@@ -67,8 +79,7 @@ export async function createSession(model: ModelSource) {
         logSeverityLevel: debug ? 0 : 2,
         logVerbosityLevel: debug ? 0 : 0,
       });
-      (sess as any).__loadMeta = { stage, source: "int8" };
-      return sess;
+      return setLoadMeta(sess, { stage, source: "int8" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn(`[ORT-LOAD] attempt failed stage=${stage}: ${msg}`);
@@ -119,8 +130,10 @@ export async function createSession(model: ModelSource) {
                     logSeverityLevel: debug ? 0 : 2,
                     logVerbosityLevel: debug ? 0 : 0,
                   });
-                  (sess as any).__loadMeta = { stage: "fp32/webgpu+wasm/all", source: "fp32" };
-                  return sess;
+                  return setLoadMeta(sess, {
+                    stage: "fp32/webgpu+wasm/all",
+                    source: "fp32",
+                  });
                 } catch (e6) {
                   attempts.push({ stage: "fp32/webgpu+wasm/all", ok: false, message: String(e6) });
                   const sess2 = await ort.InferenceSession.create(fp32bytes, {
@@ -129,8 +142,10 @@ export async function createSession(model: ModelSource) {
                     logSeverityLevel: debug ? 0 : 2,
                     logVerbosityLevel: debug ? 0 : 0,
                   });
-                  (sess2 as any).__loadMeta = { stage: "fp32/wasm/basic", source: "fp32" };
-                  return sess2;
+                  return setLoadMeta(sess2, {
+                    stage: "fp32/wasm/basic",
+                    source: "fp32",
+                  });
                 }
               } catch (e5) {
                 const err = e5 as unknown as Error;
