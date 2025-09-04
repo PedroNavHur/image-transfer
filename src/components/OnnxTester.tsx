@@ -65,13 +65,13 @@ export default function OnnxTester() {
               status={status}
               modelKey={modelKey}
               groups={groups}
-              onChangeModel={(k) => setModelKey(k)}
-              onPickImage={pickImage}
-              onRun={run}
+              changeModelAction={(k) => setModelKey(k)}
+              pickImageAction={pickImage}
+              runAction={run}
               runDisabled={!ready || !imgUrl || isRunning}
               isRunning={isRunning}
               strength={strength}
-              onChangeStrength={setStrength}
+              strengthChangeAction={setStrength}
             />
           </aside>
 

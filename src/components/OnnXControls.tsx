@@ -15,15 +15,15 @@ type Props = {
 
   modelKey: PresetKey;
   groups: Group[];
-  onChangeModel: (key: PresetKey) => void;
+  changeModelAction: (key: PresetKey) => void;
 
-  onPickImage: (f: File) => void;
-  onRun: () => void;
+  pickImageAction: (f: File) => void;
+  runAction: () => void;
   runDisabled: boolean;
   isRunning?: boolean;
 
   strength: number; // 0..100
-  onChangeStrength: (v: number) => void;
+  strengthChangeAction: (v: number) => void;
 };
 
 export default function OnnxControls({
@@ -31,13 +31,13 @@ export default function OnnxControls({
   status,
   modelKey,
   groups,
-  onChangeModel,
-  onPickImage,
-  onRun,
+  changeModelAction,
+  pickImageAction,
+  runAction,
   runDisabled,
   isRunning = false,
   strength,
-  onChangeStrength,
+  strengthChangeAction,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -48,9 +48,9 @@ export default function OnnxControls({
       ev.stopPropagation();
       setDragOver(false);
       const f = ev.dataTransfer.files?.[0];
-      if (f) onPickImage(f);
+      if (f) pickImageAction(f);
     },
-    [onPickImage],
+    [pickImageAction],
   );
 
   const currentHint = groups
@@ -72,8 +72,9 @@ export default function OnnxControls({
               <div className="flex flex-wrap gap-2">
                 {group.items.map((p) => (
                   <button
+                    type="button"
                     key={p.key}
-                    onClick={() => onChangeModel(p.key)}
+                    onClick={() => changeModelAction(p.key)}
                     className={`btn btn-sm ${modelKey === p.key ? "btn-primary" : "btn-outline"}`}
                   >
                     {p.label}
@@ -97,7 +98,7 @@ export default function OnnxControls({
             max={100}
             step="25"
             value={strength}
-            onChange={(e) => onChangeStrength(parseInt(e.target.value, 10))}
+            onChange={(e) => strengthChangeAction(parseInt(e.target.value, 10))}
             className="range range-primary"
           />
           <div>
@@ -143,6 +144,7 @@ export default function OnnxControls({
             </div>
             <div className="divider my-1">or</div>
             <button
+              type="button"
               className="btn btn-outline btn-sm rounded-lg"
               onClick={() => fileRef.current?.click()}
             >
@@ -154,7 +156,7 @@ export default function OnnxControls({
               accept="image/*"
               className="hidden"
               onChange={(e) =>
-                e.target.files?.[0] && onPickImage(e.target.files[0])
+                e.target.files?.[0] && pickImageAction(e.target.files[0])
               }
             />
             <div className="text-base-content/60 text-xs">
@@ -170,7 +172,8 @@ export default function OnnxControls({
             {ready ? status : "Loading model…"}
           </span>
           <button
-            onClick={onRun}
+            type="button"
+            onClick={runAction}
             disabled={runDisabled}
             className="btn btn-primary rounded-lg"
           >
